@@ -1,0 +1,1037 @@
+/* ==========================================================================
+   X-SPREADSHEET STYLE - Excel-Vue
+   Reproduction fidèle du style de x-spreadsheet
+   ========================================================================== */
+
+/* Variables */
+:root {
+  --css-prefix: x-spreadsheet;
+  --primary-color: #2185D0;
+  --primary-hover-color: #1678c2;
+  --border-color: #e0e2e4;
+  --border: 1px solid var(--border-color);
+  --icon-size: 18px;
+  --line-height: 1.25em;
+  --input-border: var(--border);
+  --input-padding: 0.5em 0.75em;
+  --input-box-shadow: inset 0 1px 2px hsla(0,0%,4%,.06);
+  --border-radius: 2px;
+  --form-field-height: 30px;
+  --red-color: #DB2828;
+  --orange-color: #F2711C;
+  --yellow-color: #FBBD08;
+  --green-color: #21BA45;
+  --teal-color: #00B5AD;
+  --blue-color: #2185D0;
+  --violet-color: #6435C9;
+  --purple-color: #A333C8;
+  --pink-color: #E03997;
+  --brown-color: #A5673F;
+  --grey-color: #767676;
+  --dark-color: #343a40;
+  --black-color: #1B1C1D;
+}
+
+/* ==========================================================================
+   BASE STYLES
+   ========================================================================== */
+
+body {
+  margin: 0;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #fff;
+}
+
+/* ==========================================================================
+   APP HEADER (Harena style - gardé en haut)
+   ========================================================================== */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 30px;
+  height: 40px;
+  background: linear-gradient(to right, #1a73e8, #4285f4);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-section h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  color: white;
+}
+
+.star-btn:hover,
+.star-btn.active {
+  opacity: 1;
+}
+
+.global-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Buttons */
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--border-radius);
+  background: white;
+  color: #333;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+}
+
+.btn:hover {
+  background: #f0f0f0;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.5);
+  color: white;
+}
+
+.btn-outline:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.btn-primary {
+  background: #21BA45;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #16ab39;
+}
+
+.btn-success {
+  background: #2185D0;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #1678c2;
+}
+
+.btn-help {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.5);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-help:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* ==========================================================================
+   TOOLBAR (Style x-spreadsheet exact)
+   ========================================================================== */
+
+.toolbar {
+  height: 40px;
+  padding: 0 30px;
+  text-align: left;
+  background: #f5f6f7;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e0e2e4;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  user-select: none;
+  -moz-user-select: none;
+  overflow: hidden;
+}
+
+.toolbar-btns {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.tool-divider {
+  display: inline-block;
+  border-left: 1px solid #e0e2e4;
+  margin: 6px 8px;
+  height: 26px;
+}
+
+/* Toolbar Button x-spreadsheet style */
+.toolbar-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  height: 26px;
+  line-height: 26px;
+  min-width: 26px;
+  margin: 6px 1px 0;
+  padding: 0;
+  text-align: center;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.toolbar-btn.active {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.toolbar-btn:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.toolbar-btn .icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dropdowns */
+.dropdown {
+  display: inline-block;
+  position: relative;
+}
+
+.dropdown-content {
+  position: absolute;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 100;
+  min-width: 120px;
+  display: none;
+}
+
+.dropdown.open .dropdown-content {
+  display: block;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dropdown-item:hover {
+  background: #f5f5f5;
+}
+
+.dropdown-item.selected {
+  background: #e3f2fd;
+  color: var(--primary-color);
+}
+
+/* Select inputs toolbar style */
+.toolbar-select {
+  height: 26px;
+  line-height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  color: #666;
+  font-family: inherit;
+}
+
+.toolbar-select:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.toolbar-select:focus {
+  border-color: var(--primary-color);
+}
+
+/* Color picker toolbar style */
+.color-picker-toolbar {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.color-picker-toolbar:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.color-indicator {
+  width: 16px;
+  height: 3px;
+  border-radius: 1px;
+  margin-top: 8px;
+}
+
+/* ==========================================================================
+   TOOLBAR CONTAINER
+   ========================================================================== */
+.toolbar-container {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+/* ==========================================================================
+   FORMULA BAR (Style x-spreadsheet)
+   ========================================================================== */
+
+.formula-bar {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  background: #f5f6f7;
+  border-bottom: 1px solid #e0e2e4;
+  padding: 0 30px;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+}
+
+.cell-address {
+  min-width: 60px;
+  padding: 2px 8px;
+  background: white;
+  border: 1px solid #e0e2e4;
+  border-radius: var(--border-radius);
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  text-align: center;
+  color: #333;
+  height: 22px;
+  line-height: 22px;
+}
+
+.formula-icon {
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-style: italic;
+  color: #2185D0;
+  font-size: 14px;
+  margin: 0 8px;
+  font-weight: 500;
+}
+
+.formula-input {
+  flex: 1;
+  padding: 2px 8px;
+  border: 1px solid #e0e2e4;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  outline: none;
+  height: 22px;
+  line-height: 22px;
+  background: white;
+}
+
+.formula-input:focus {
+  border-color: #2185D0;
+}
+
+/* ==========================================================================
+   GRID CONTAINER (Style x-spreadsheet)
+   ========================================================================== */
+
+.grid-container {
+  flex: 1;
+  display: grid;
+  grid-template-areas:
+    "corner col-headers"
+    "row-headers grid-cells";
+  grid-template-columns: 50px 1fr;
+  grid-template-rows: 25px 1fr;
+  overflow: hidden;
+  position: relative;
+  background: white;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+}
+
+/* Corner Header */
+.corner-header {
+  grid-area: corner;
+  background: #f4f5f8;
+  border-right: 1px solid #e6e6e6;
+  border-bottom: 1px solid #e6e6e6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.corner-header:hover {
+  background: #e8e8e8;
+}
+
+/* Column Headers */
+.col-headers {
+  grid-area: col-headers;
+  display: flex;
+  background: #f4f5f8;
+  border-bottom: 1px solid #e6e6e6;
+  overflow: hidden;
+}
+
+.col-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #e6e6e6;
+  font-size: 12px;
+  font-weight: 500;
+  color: #585757;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  text-align: center;
+  background: #f4f5f8;
+  height: 25px;
+  line-height: 25px;
+}
+
+.col-header:hover {
+  background: #e8e8e8;
+}
+
+.col-header.selected {
+  background: rgba(75, 137, 255, 0.15);
+  color: #4b89ff;
+}
+
+.col-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.col-resize-handle:hover,
+.col-resize-handle.active {
+  background: #4b89ff;
+}
+
+/* Row Headers */
+.row-headers {
+  grid-area: row-headers;
+  display: flex;
+  flex-direction: column;
+  background: #f4f5f8;
+  border-right: 1px solid #e6e6e6;
+  overflow: hidden;
+}
+
+.row-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #e6e6e6;
+  font-size: 12px;
+  font-weight: 500;
+  color: #585757;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  text-align: center;
+  background: #f4f5f8;
+  width: 50px;
+}
+
+.row-header:hover {
+  background: #e8e8e8;
+}
+
+.row-header.selected {
+  background: rgba(75, 137, 255, 0.15);
+  color: #4b89ff;
+}
+
+.row-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  cursor: row-resize;
+  z-index: 10;
+}
+
+.row-resize-handle:hover,
+.row-resize-handle.active {
+  background: #4b89ff;
+}
+
+/* Grid Cells */
+.grid-cells {
+  grid-area: grid-cells;
+  position: relative;
+  overflow: auto;
+  background: white;
+  outline: none;
+}
+
+.cell {
+  position: absolute;
+  border: 1px solid #e6e6e6;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  font-size: 13px;
+  background: white;
+  cursor: cell;
+  user-select: none;
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  line-height: normal;
+}
+
+.cell:hover {
+  background: #f8f9fa;
+}
+
+.cell.selected {
+  outline: 2px solid #4b89ff;
+  outline-offset: -2px;
+  z-index: 10;
+}
+
+.cell.selection-range {
+  background: rgba(75, 137, 255, 0.08);
+}
+
+.cell.editing {
+  padding: 0;
+  outline: 2px solid #4b89ff;
+  outline-offset: -2px;
+  z-index: 20;
+}
+
+.cell.merged {
+  z-index: 5;
+}
+
+.cell-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  padding: 0 5px;
+  font-size: 13px;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  background: white;
+}
+
+/* Selection Border x-spreadsheet style */
+.selection-border {
+  position: absolute;
+  border: 2px solid #4b89ff;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Autofill Handle */
+.autofill-handle {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  background: #4b89ff;
+  cursor: crosshair;
+  z-index: 20;
+  border: 1px solid white;
+  border-radius: 50%;
+}
+
+/* Freeze Highlight Line */
+.freeze-highlight-line-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #4b89ff;
+  z-index: 100;
+}
+
+.freeze-highlight-line-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed #4b89ff;
+  z-index: 100;
+}
+
+/* ==========================================================================
+   VALIDATION ERROR INDICATOR
+   ========================================================================== */
+.validation-error-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  color: #DB2828;
+  z-index: 10;
+}
+
+.validation-error-indicator svg {
+  width: 8px;
+  height: 8px;
+}
+
+/* ==========================================================================
+   FREEZE INDICATOR
+   ========================================================================== */
+.freeze-indicator {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  color: #4b89ff;
+  z-index: 10;
+  opacity: 0.5;
+}
+
+.freeze-indicator svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ==========================================================================
+   AUTOFILL PREVIEW
+   ========================================================================== */
+.autofill-preview {
+  position: absolute;
+  border: 2px dashed #4b89ff;
+  background: rgba(75, 137, 255, 0.05);
+  pointer-events: none;
+  z-index: 14;
+}
+
+/* ==========================================================================
+   RESIZE HANDLES VISUAL FEEDBACK
+   ========================================================================== */
+.col-resize-handle.active,
+.row-resize-handle.active {
+  background: #4b89ff;
+}
+
+.col-resize-handle::after,
+.row-resize-handle::after {
+  content: '';
+  position: absolute;
+  background: #4b89ff;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.col-resize-handle:hover::after {
+  opacity: 1;
+  width: 1px;
+  height: 100vh;
+  position: fixed;
+  left: 50%;
+  top: 0;
+}
+
+.row-resize-handle:hover::after {
+  opacity: 1;
+  height: 1px;
+  width: 100vw;
+  position: fixed;
+  top: 50%;
+  left: 0;
+}
+
+/* ==========================================================================
+   SHEET TABS (Style x-spreadsheet)
+   ========================================================================== */
+
+.footer-tabs {
+  height: 40px;
+  padding: 0 30px;
+  text-align: left;
+  background: #f5f6f7;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #e0e2e4;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+}
+
+.tabs-container {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+.tab-wrapper {
+  display: flex;
+  align-items: center;
+  line-height: 40px;
+  height: 40px;
+  padding: 0 16px;
+  vertical-align: middle;
+  text-align: left;
+  font-weight: 400;
+  color: #80868b;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-right: 1px solid #e8eaed;
+  position: relative;
+  background: transparent;
+}
+
+.tab-wrapper:hover {
+  color: rgba(0, 0, 0, 0.65);
+  background: rgba(0,0,0,0.02);
+}
+
+.tab-wrapper.active {
+  background-color: white;
+  color: rgba(0, 0, 0, 0.65);
+  font-weight: 500;
+  border-bottom: 2px solid #4b89ff;
+}
+
+.tab-name {
+  margin-right: 8px;
+}
+
+.tab-delete {
+  margin-left: 4px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+  border-radius: 50%;
+}
+
+.tab-wrapper:hover .tab-delete {
+  opacity: 0.6;
+}
+
+.tab-delete:hover {
+  opacity: 1 !important;
+  color: #d93025;
+  background: rgba(217, 48, 37, 0.1);
+}
+
+.add-tab {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d0d0d0;
+  background: white;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  transition: all 0.2s;
+}
+
+.add-tab:hover {
+  background: #f5f5f5;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* ==========================================================================
+   CONTEXT MENU (Style x-spreadsheet)
+   ========================================================================== */
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e2e4;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 200px;
+  padding: 4px 0;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+}
+
+.menu-section {
+  padding: 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: background 0.15s;
+  line-height: 1.5;
+}
+
+.menu-item:hover {
+  background: #f5f5f5;
+}
+
+.menu-item .icon {
+  width: 18px;
+  height: 18px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.menu-item .icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #e0e2e4;
+  margin: 4px 0;
+}
+
+/* ==========================================================================
+   MODALS & DIALOGS
+   ========================================================================== */
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 4px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.modal-content h2 {
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.formula-list {
+  margin-bottom: 20px;
+}
+
+.formula-category {
+  margin-bottom: 20px;
+}
+
+.formula-category h3 {
+  margin-bottom: 12px;
+  color: #2185D0;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.formula-category p {
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #555;
+}
+
+.formula-category strong {
+  color: #333;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: #f5f5f5;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+
+@media print {
+  .app-header,
+  .toolbar,
+  .footer-tabs {
+    display: none !important;
+  }
+  
+  .grid-container {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .cell {
+    border-color: #e0e2e4 !important;
+  }
+  
+  .cell.selected {
+    outline: none !important;
+  }
+}
+
+/* ==========================================================================
+   SCROLLBARS
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* ==========================================================================
+   TOOLTIP
+   ========================================================================== */
+
+.tooltip {
+  font-family: 'Lato', 'Source Sans Pro', Roboto, Helvetica, Arial, sans-serif;
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  color: #fff;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.9);
+  font-size: 12px;
+  z-index: 201;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.tooltip:before {
+  pointer-events: none;
+  position: absolute;
+  left: calc(50% - 4px);
+  top: -4px;
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.9);
+  transform: rotate(45deg);
+  z-index: 1;
+}
+
+.toolbar-btn:hover .tooltip,
+.color-picker-toolbar:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+}
