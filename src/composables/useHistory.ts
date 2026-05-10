@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { Sheet } from '../types/spreadsheet'
+import type { Sheet, CellData } from '../types/spreadsheet'
 import { deepClone, generateId } from '../utils/helpers'
 
 export interface HistoryEntry {
@@ -7,6 +7,7 @@ export interface HistoryEntry {
   timestamp: number
   sheets: Sheet[]
   activeSheetId: string
+  sheetsData: Record<string, Record<string, CellData>>
   description: string
 }
 
@@ -19,7 +20,12 @@ export function useHistory(limit: number = 50) {
   const historyCount = computed(() => history.value.length)
   
   // Push a new state to history
-  const push = (sheets: Sheet[], activeSheetId: string, description: string = 'Action') => {
+  const push = (
+    sheets: Sheet[],
+    activeSheetId: string,
+    sheetsData: Record<string, Record<string, CellData>>,
+    description: string = 'Action'
+  ) => {
     // Remove any future history if we're not at the end
     if (currentIndex.value < history.value.length - 1) {
       history.value = history.value.slice(0, currentIndex.value + 1)
@@ -31,6 +37,7 @@ export function useHistory(limit: number = 50) {
       timestamp: Date.now(),
       sheets: deepClone(sheets),
       activeSheetId: deepClone(activeSheetId),
+      sheetsData: deepClone(sheetsData),
       description
     }
     

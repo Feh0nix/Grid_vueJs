@@ -89,8 +89,9 @@
             v-model="localEditValue"
             class="cell-input"
             @blur="saveEdit"
-            @keydown.enter="saveEdit"
-            @keydown.escape="cancelEdit"
+            @keydown.enter.stop="saveEdit"
+            @keydown.escape.stop="cancelEdit"
+            @keydown.stop
           />
         </template>
         <template v-else>
@@ -134,12 +135,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import type { CellData, CellPosition, CellRange, CellFormat, Sheet } from '../types/spreadsheet'
-import {
-  cellKey,
-  indexToColumn,
-  formatValue
-} from '../utils/helpers'
+import type { CellPosition, CellRange, Sheet, CellData, CellFormat } from '../types/spreadsheet'
+import { indexToColumn, cellKey, formatValue } from '../utils/helpers'
+import { useSpreadsheetStore } from '../stores'
 import { useFormula } from '../composables/useFormula'
 import Icons from './Icons.vue'
 
@@ -170,6 +168,9 @@ const emit = defineEmits<{
   paintFormatApply: [range: CellRange]
   filterClick: [col: number, position: { top: number; left: number }]
 }>()
+
+// Store for reactive cell data access
+const store = useSpreadsheetStore()
 
 // Formula - evaluate function for computing cell formulas
 const formulaEvaluator = useFormula()
@@ -308,11 +309,13 @@ const visibleCols = computed(() => {
 
 const visibleCells = computed(() => {
   const cells: (CellData & { key: string })[] = []
+  const activeId = store.spreadsheet.activeSheetId
+  const sheetData = store.sheetsData[activeId] || {}
   
   for (const row of visibleRows.value) {
     for (const col of visibleCols.value) {
       const key = cellKey(row, col)
-      const cell = props.sheet.cells.get(key)
+      const cell = sheetData[key]
       
       if (cell) {
         cells.push({ ...cell, key })
@@ -418,7 +421,9 @@ const getRowTop = (row: number): number => {
 
 const formatCellValue = (cell: CellData): string => {
   if (cell.formula) {
-    return formulaEvaluator.evaluate(cell.formula, props.sheet.cells)
+    const activeId = store.spreadsheet.activeSheetId
+    const cellsMap = new Map(Object.entries(store.sheetsData[activeId] || {}))
+    return formulaEvaluator.evaluate(cell.formula, cellsMap)
   }
   return formatValue(
     cell.value,
@@ -570,6 +575,7 @@ const handleMouseUp = () => {
 }
 
 const startEdit = (cell: CellData, initialValue: string = '') => {
+  const isTyping = initialValue.length > 0
   // Set local edit value first
   localEditValue.value = initialValue || String(cell.value || '')
   // Then emit the cell edit to set editing state
@@ -577,11 +583,21 @@ const startEdit = (cell: CellData, initialValue: string = '') => {
 
   nextTick(() => {
     setTimeout(() => {
-      if (editInput.value && typeof editInput.value.focus === 'function') {
-        editInput.value.focus()
-        editInput.value.select()
+      // Use querySelector because ref inside v-for creates an array in Vue 3
+      const input = gridCells.value?.querySelector('.cell-input') as HTMLInputElement | null
+      if (input) {
+        input.focus()
+        if (!isTyping) {
+          // Only select all text when entering edit via double-click or F2,
+          // not when the user starts typing a character
+          input.select()
+        } else {
+          // Place cursor at the end when typing
+          const len = input.value.length
+          input.setSelectionRange(len, len)
+        }
       }
-    }, 50)
+    }, 10)
   })
 }
 
@@ -645,13 +661,17 @@ const stopAutofill = () => {
         const sourceKey = cellKey(sourceRow, sourceCol)
         const targetKey = cellKey(r, c)
         
-        const sourceCell = props.sheet.cells.get(sourceKey)
+        const activeId = store.spreadsheet.activeSheetId
+        const sourceCell = store.sheetsData[activeId]?.[sourceKey]
         if (sourceCell) {
-          props.sheet.cells.set(targetKey, {
+          if (!store.sheetsData[activeId]) {
+            store.sheetsData[activeId] = {}
+          }
+          store.sheetsData[activeId][targetKey] = {
             ...sourceCell,
             row: r,
             col: c
-          })
+          }
         }
       }
     }
@@ -677,11 +697,9 @@ const handleKeyDown = (e: KeyboardEvent) => {
   const isCurrentlyEditing = props.editingCell !== null
   
   if (isCurrentlyEditing) {
-    // Handle editing mode keys
-    if (e.key === 'Escape') {
-      cancelEdit()
-      e.preventDefault()
-    }
+    // When editing, all key events should go to the input, not here.
+    // The input has @keydown.stop so this should not normally fire,
+    // but as a safety net, just return.
     return
   }
   
@@ -718,7 +736,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
     case 'F2':
       {
         const key = cellKey(row, col)
-        const cell = props.sheet.cells.get(key)
+        const activeId = store.spreadsheet.activeSheetId
+        const cell = store.sheetsData[activeId]?.[key]
         if (cell) startEdit(cell)
         e.preventDefault()
       }
@@ -726,15 +745,13 @@ const handleKeyDown = (e: KeyboardEvent) => {
     default:
       // Start editing on any printable character
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        emit('cellEdit', { row, col })
-        emit('cellValueChange', { row, col }, e.key)
-        nextTick(() => {
-          setTimeout(() => {
-            if (editInput.value && typeof editInput.value.focus === 'function') {
-              editInput.value.focus()
-            }
-          }, 0)
-        })
+        const key = cellKey(row, col)
+        const activeId = store.spreadsheet.activeSheetId
+        const cellData = store.sheetsData[activeId]?.[key]
+        const cell: CellData & { key: string } = cellData
+          ? { ...cellData, key }
+          : { row, col, value: '', format: {}, key }
+        startEdit(cell, e.key)
         e.preventDefault()
       }
   }

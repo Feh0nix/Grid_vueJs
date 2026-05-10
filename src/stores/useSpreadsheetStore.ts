@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { Ref, ComputedRef } from 'vue'
+import { defineStore } from 'pinia'
 import type {
   SpreadsheetState,
   Sheet,
@@ -18,111 +18,7 @@ import { useFormula } from '../composables/useFormula'
 // STORE PRINCIPAL - ÉTAT GLOBAL DU CLASSEUR
 // ============================================================================
 
-export interface SpreadsheetStore {
-  // État réactif
-  spreadsheet: Ref<SpreadsheetState>
-  selectedCell: Ref<CellPosition | null>
-  selectionRange: Ref<CellRange | null>
-  editingCell: Ref<CellPosition | null>
-  editValue: Ref<string>
-  currentFormat: Ref<CellFormat>
-  isFavorite: Ref<boolean>
-  showFormulaHelp: Ref<boolean>
-  showFormatModal: Ref<boolean>
-  showValidationModal: Ref<boolean>
-  autofilterRange: Ref<CellRange | null>
-  activeFilters: Ref<Map<number, string[]>>
-  hiddenRows: Ref<Set<number>>
-  showBorderSelector: Ref<boolean>
-  showPrintPreview: Ref<boolean>
-  showDatePicker: Ref<boolean>
-  showSortFilter: Ref<boolean>
-  
-  // Computed
-  activeSheet: ComputedRef<Sheet>
-  canUndo: ComputedRef<boolean>
-  canRedo: ComputedRef<boolean>
-  selectedCellData: ComputedRef<CellData | null>
-  isMergeActive: ComputedRef<boolean>
-  
-  // Actions - Gestion des feuilles
-  createDefaultSheet: (name?: string) => Sheet
-  setActiveSheet: (sheetId: string) => void
-  addSheet: () => void
-  deleteSheet: (sheetId: string) => void
-  renameSheet: (sheetId: string, newName: string) => void
-  
-  // Actions - Cellules
-  selectCell: (position: CellPosition) => void
-  selectRange: (range: CellRange) => void
-  startEdit: (position: CellPosition) => void
-  endEdit: () => void
-  setEditValue: (value: string) => void
-  updateCellValue: (position: CellPosition, value: string) => void
-  updateCellFormat: (positions: CellPosition[], format: Partial<CellFormat>) => void
-  
-  // Actions - Historique
-  saveState: (description: string) => void
-  undo: () => void
-  redo: () => void
-  
-  // Actions - Presse-papiers
-  cut: () => void
-  copy: () => void
-  paste: () => void
-  activatePaintFormat: () => void
-  applyPaintFormat: (range: CellRange) => void
-  isPaintFormatActive: () => boolean
-  
-  // Actions - Fusion de cellules
-  mergeCells: () => void
-  unmergeCells: () => void
-  
-  // Actions - Lignes/Colonnes
-  insertRow: () => void
-  insertCol: () => void
-  deleteRow: () => void
-  deleteCol: () => void
-  hideRow: () => void
-  hideCol: () => void
-  showAllRows: () => void
-  resizeRow: (row: number, height: number) => void
-  resizeCol: (col: number, width: number) => void
-  
-  // Actions - Formatage
-  clearFormat: () => void
-  applyCurrencyFormat: () => void
-  applyPercentageFormat: () => void
-  applyNumberFormat: () => void
-  toggleTextWrap: () => void
-  
-  // Actions - Zoom
-  setZoom: (zoom: number) => void
-  
-  // Actions - Filtres
-  toggleAutofilter: () => void
-  applyFilter: (col: number, selectedValues: string[]) => void
-  
-  // Actions - Tri
-  sortAscending: () => void
-  sortDescending: () => void
-  
-  // Actions - Validation
-  addValidation: (rule: ValidationRule) => void
-  clearValidation: () => void
-  
-  // Actions - Bordures
-  applyBorder: (borderStyle: any) => void
-  
-  // Actions - Figer volets
-  freezePanes: () => void
-  
-  // Actions - Divers
-  toggleFavorite: () => void
-  setSpreadsheetName: (name: string) => void
-}
-
-export function useSpreadsheetStore(): SpreadsheetStore {
+export const useSpreadsheetStore = defineStore('spreadsheet', () => {
   // ============================================================================
   // INITIALISATION
   // ============================================================================
@@ -173,6 +69,7 @@ export function useSpreadsheetStore(): SpreadsheetStore {
   history.push(
     deepClone(spreadsheet.value.sheets),
     spreadsheet.value.activeSheetId,
+    {},
     'Initial state'
   )
   
@@ -180,18 +77,30 @@ export function useSpreadsheetStore(): SpreadsheetStore {
   // COMPUTED
   // ============================================================================
   
+  // Convertir les Map en objets réactifs pour le store
+  const sheetsData = ref<Record<string, Record<string, CellData>>>({})
+  
   const activeSheet = computed<Sheet>(() => {
     const sheet = spreadsheet.value.sheets.find(s => s.id === spreadsheet.value.activeSheetId)
-    return sheet || spreadsheet.value.sheets[0]
+    if (!sheet) return spreadsheet.value.sheets[0]
+    
+    // Retourner une copie avec les cellules comme Map (compatibilité)
+    const sheetData = sheetsData.value[sheet.id] || {}
+    return {
+      ...sheet,
+      cells: new Map(Object.entries(sheetData))
+    }
   })
   
   const canUndo = computed(() => history.canUndo.value)
   const canRedo = computed(() => history.canRedo.value)
   
+  // Getter pour récupérer les données d'une cellule (utilise l'objet réactif)
   const selectedCellData = computed<CellData | null>(() => {
     if (!selectedCell.value) return null
+    const activeId = spreadsheet.value.activeSheetId
     const key = cellKey(selectedCell.value.row, selectedCell.value.col)
-    return activeSheet.value.cells.get(key) || null
+    return sheetsData.value[activeId]?.[key] || null
   })
   
   const isMergeActive = computed(() => {
@@ -223,6 +132,7 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     history.push(
       deepClone(spreadsheet.value.sheets),
       spreadsheet.value.activeSheetId,
+      deepClone(sheetsData.value),
       description
     )
   }
@@ -285,8 +195,9 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     editingCell.value = null
     
     // Update current format
+    const activeId = spreadsheet.value.activeSheetId
     const key = cellKey(position.row, position.col)
-    const cell = activeSheet.value.cells.get(key)
+    const cell = sheetsData.value[activeId]?.[key]
     currentFormat.value = cell?.format || {}
   }
   
@@ -298,8 +209,9 @@ export function useSpreadsheetStore(): SpreadsheetStore {
   
   function startEdit(position: CellPosition): void {
     editingCell.value = position
+    const activeId = spreadsheet.value.activeSheetId
     const key = cellKey(position.row, position.col)
-    const cell = activeSheet.value.cells.get(key)
+    const cell = sheetsData.value[activeId]?.[key]
     editValue.value = cell?.formula || cell?.value || ''
   }
   
@@ -315,14 +227,15 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     saveState('Edit cell')
     
     const key = cellKey(position.row, position.col)
-    const existingCell = activeSheet.value.cells.get(key)
+    const activeId = spreadsheet.value.activeSheetId
+    const existingCell = sheetsData.value[activeId]?.[key]
     
     const formula = formulaEvaluator.isFormula(value) ? value : undefined
     const computedValue = formula 
-      ? formulaEvaluator.evaluate(formula, activeSheet.value.cells) 
+      ? formulaEvaluator.evaluate(formula, new Map(Object.entries(sheetsData.value[activeId] || {}))) 
       : value
     
-    const cellData: CellData = {
+    const cellData_obj: CellData = {
       row: position.row,
       col: position.col,
       value: computedValue,
@@ -330,31 +243,47 @@ export function useSpreadsheetStore(): SpreadsheetStore {
       format: existingCell?.format || currentFormat.value || {}
     }
     
-    if (value === '' && !existingCell?.format) {
-      activeSheet.value.cells.delete(key)
-    } else {
-      activeSheet.value.cells.set(key, cellData)
+    // Initialiser la feuille si nécessaire
+    if (!sheetsData.value[activeId]) {
+      sheetsData.value[activeId] = {}
     }
     
-    editingCell.value = null
+    if (value === '' && !existingCell?.format) {
+      delete sheetsData.value[activeId][key]
+    } else {
+      // Utiliser l'assignation réactive (pas Map.set qui n'est pas réactif)
+      sheetsData.value[activeId][key] = cellData_obj
+    }
   }
   
   function updateCellFormat(positions: CellPosition[], format: Partial<CellFormat>): void {
     saveState('Format cells')
     
+    const activeId = spreadsheet.value.activeSheetId
+    
+    // Initialiser la feuille si nécessaire
+    if (!sheetsData.value[activeId]) {
+      sheetsData.value[activeId] = {}
+    }
+    
     for (const pos of positions) {
       const key = cellKey(pos.row, pos.col)
-      const cell = activeSheet.value.cells.get(key)
+      const cell = sheetsData.value[activeId][key]
       
       if (cell) {
-        cell.format = { ...cell.format, ...format }
+        // Créer un nouvel objet pour la réactivité
+        sheetsData.value[activeId][key] = {
+          ...cell,
+          format: { ...cell.format, ...format }
+        }
       } else if (Object.keys(format).length > 0) {
-        activeSheet.value.cells.set(key, {
+        // Créer une nouvelle cellule avec le format
+        sheetsData.value[activeId][key] = {
           row: pos.row,
           col: pos.col,
           value: '',
-          format
-        })
+          format: { ...format }
+        }
       }
     }
     
@@ -370,6 +299,8 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     if (state) {
       spreadsheet.value.sheets = state.sheets
       spreadsheet.value.activeSheetId = state.activeSheetId
+      sheetsData.value = state.sheetsData || {}
+      editingCell.value = null
     }
   }
   
@@ -378,6 +309,8 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     if (state) {
       spreadsheet.value.sheets = state.sheets
       spreadsheet.value.activeSheetId = state.activeSheetId
+      sheetsData.value = state.sheetsData || {}
+      editingCell.value = null
     }
   }
   
@@ -387,33 +320,53 @@ export function useSpreadsheetStore(): SpreadsheetStore {
   
   function cut(): void {
     if (!selectionRange.value) return
-    clipboard.cut(activeSheet.value.cells, selectionRange.value, activeSheet.value.id)
+    const activeId = spreadsheet.value.activeSheetId
+    const cellsMap = new Map(Object.entries(sheetsData.value[activeId] || {}))
+    clipboard.cut(cellsMap, selectionRange.value, activeSheet.value.id)
   }
   
   function copy(): void {
     if (!selectionRange.value) return
-    clipboard.copy(activeSheet.value.cells, selectionRange.value, activeSheet.value.id)
+    const activeId = spreadsheet.value.activeSheetId
+    const cellsMap = new Map(Object.entries(sheetsData.value[activeId] || {}))
+    clipboard.copy(cellsMap, selectionRange.value, activeSheet.value.id)
   }
   
   function paste(): void {
     if (!selectedCell.value || !clipboard.hasClipboard()) return
     
     saveState('Paste')
+    const activeId = spreadsheet.value.activeSheetId
+    const cellsMap = new Map(Object.entries(sheetsData.value[activeId] || {}))
     clipboard.paste(
-      activeSheet.value.cells,
+      cellsMap,
       selectedCell.value,
       activeSheet.value.id
     )
+    
+    // Synchroniser les modifications du clipboard vers sheetsData
+    for (const [key, cell] of cellsMap) {
+      sheetsData.value[activeId][key] = cell
+    }
   }
   
   function activatePaintFormat(): void {
     if (!selectionRange.value) return
-    clipboard.activatePaintFormat(activeSheet.value.cells, selectionRange.value)
+    const activeId = spreadsheet.value.activeSheetId
+    const cellsMap = new Map(Object.entries(sheetsData.value[activeId] || {}))
+    clipboard.activatePaintFormat(cellsMap, selectionRange.value)
   }
   
   function applyPaintFormat(range: CellRange): void {
     saveState('Paint format')
-    clipboard.applyPaintFormat(activeSheet.value.cells, range)
+    const activeId = spreadsheet.value.activeSheetId
+    const cellsMap = new Map(Object.entries(sheetsData.value[activeId] || {}))
+    clipboard.applyPaintFormat(cellsMap, range)
+    
+    // Synchroniser les modifications vers sheetsData
+    for (const [key, cell] of cellsMap) {
+      sheetsData.value[activeId][key] = cell
+    }
   }
   
   function isPaintFormatActive(): boolean {
@@ -459,13 +412,14 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     insertRow?: number,
     insertCol?: number
   ): void {
-    const newCells = new Map<string, CellData>()
+    const activeId = spreadsheet.value.activeSheetId
+    const newCellsObj: Record<string, CellData> = {}
     const newMerges = new Map<string, any>()
     const newRowHeights = new Map<number, number>()
     const newColWidths = new Map<number, number>()
     
-    // Shift cells
-    for (const [, cell] of activeSheet.value.cells) {
+    // Shift cells - utiliser l'objet sheetsData
+    for (const [, cell] of Object.entries(sheetsData.value[activeId] || {})) {
       let newRow = cell.row
       let newCol = cell.col
       
@@ -477,7 +431,7 @@ export function useSpreadsheetStore(): SpreadsheetStore {
       }
       
       const newKey = cellKey(newRow, newCol)
-      newCells.set(newKey, { ...cell, row: newRow, col: newCol })
+      newCellsObj[newKey] = { ...cell, row: newRow, col: newCol }
     }
     
     // Shift merges
@@ -521,7 +475,8 @@ export function useSpreadsheetStore(): SpreadsheetStore {
       }
     }
     
-    activeSheet.value.cells = newCells
+    // Mettre à jour l'objet réactif
+    sheetsData.value[activeId] = newCellsObj
     activeSheet.value.merges = newMerges
     activeSheet.value.rowHeights = newRowHeights
     activeSheet.value.colWidths = newColWidths
@@ -544,19 +499,20 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     saveState('Delete row')
     
     const deleteRow = selectedCell.value.row
-    const newCells = new Map<string, CellData>()
+    const activeId = spreadsheet.value.activeSheetId
+    const newCells: Record<string, CellData> = {}
     
-    for (const [key, cell] of activeSheet.value.cells) {
+    for (const [key, cell] of Object.entries(sheetsData.value[activeId] || {})) {
       if (cell.row === deleteRow) continue
       if (cell.row > deleteRow) {
         const newKey = cellKey(cell.row - 1, cell.col)
-        newCells.set(newKey, { ...cell, row: cell.row - 1 })
+        newCells[newKey] = { ...cell, row: cell.row - 1 }
       } else {
-        newCells.set(key, cell)
+        newCells[key] = cell
       }
     }
     
-    activeSheet.value.cells = newCells
+    sheetsData.value[activeId] = newCells
     
     // Update merges
     const newMerges = new Map<string, any>()
@@ -575,19 +531,20 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     saveState('Delete column')
     
     const deleteCol = selectedCell.value.col
-    const newCells = new Map<string, CellData>()
+    const activeId = spreadsheet.value.activeSheetId
+    const newCells: Record<string, CellData> = {}
     
-    for (const [key, cell] of activeSheet.value.cells) {
+    for (const [key, cell] of Object.entries(sheetsData.value[activeId] || {})) {
       if (cell.col === deleteCol) continue
       if (cell.col > deleteCol) {
         const newKey = cellKey(cell.row, cell.col - 1)
-        newCells.set(newKey, { ...cell, col: cell.col - 1 })
+        newCells[newKey] = { ...cell, col: cell.col - 1 }
       } else {
-        newCells.set(key, cell)
+        newCells[key] = cell
       }
     }
     
-    activeSheet.value.cells = newCells
+    sheetsData.value[activeId] = newCells
     
     // Update merges
     const newMerges = new Map<string, any>()
@@ -721,8 +678,9 @@ export function useSpreadsheetStore(): SpreadsheetStore {
       let shouldHide = false
       
       for (const [filterCol, filterValues] of activeFilters.value) {
+        const activeId = spreadsheet.value.activeSheetId
         const key = cellKey(row, filterCol)
-        const cell = activeSheet.value.cells.get(key)
+        const cell = sheetsData.value[activeId]?.[key]
         const cellValue = cell?.value || ''
         
         if (!filterValues.includes(cellValue)) {
@@ -748,13 +706,14 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     
     const { sci, eri, eci } = selectionRange.value
     const sortCol = sci
+    const activeId = spreadsheet.value.activeSheetId
     
     // Collect all rows in the range with their sort key value
     const rowData: { row: number; sortValue: string | number }[] = []
     
     for (let row = selectionRange.value.sri; row <= eri; row++) {
       const key = cellKey(row, sortCol)
-      const cell = activeSheet.value.cells.get(key)
+      const cell = sheetsData.value[activeId]?.[key]
       const value = cell?.value || ''
       const numValue = parseFloat(String(value))
       const sortValue = isNaN(numValue) ? value : numValue
@@ -774,7 +733,7 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     })
     
     // Reorder rows
-    const sortedCells = new Map<string, CellData>()
+    const sortedCells: Record<string, CellData> = {}
     
     for (let i = 0; i < rowData.length; i++) {
       const targetRow = rowData[i].row
@@ -784,16 +743,16 @@ export function useSpreadsheetStore(): SpreadsheetStore {
         const sourceKey = cellKey(sourceRow, col)
         const targetKey = cellKey(targetRow, col)
         
-        const sourceCell = activeSheet.value.cells.get(sourceKey)
+        const sourceCell = sheetsData.value[activeId]?.[sourceKey]
         if (sourceCell) {
-          sortedCells.set(targetKey, { ...sourceCell, row: targetRow })
+          sortedCells[targetKey] = { ...sourceCell, row: targetRow }
         }
       }
     }
     
     // Update the cells in the sheet
-    for (const [key, cell] of sortedCells) {
-      activeSheet.value.cells.set(key, cell)
+    for (const [key, cell] of Object.entries(sortedCells)) {
+      sheetsData.value[activeId][key] = cell
     }
   }
   
@@ -905,6 +864,9 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     showDatePicker,
     showSortFilter,
     
+    // Données réactives (objet au lieu de Map pour la réactivité)
+    sheetsData,
+    
     // Computed
     activeSheet,
     canUndo,
@@ -962,4 +924,4 @@ export function useSpreadsheetStore(): SpreadsheetStore {
     toggleFavorite,
     setSpreadsheetName
   }
-}
+})

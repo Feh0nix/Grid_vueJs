@@ -1,0 +1,158 @@
+/* postcss */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styling */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #dadce0 transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #dadce0;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #bdc1c6;
+  }
+  
+  /* Dark mode scrollbar */
+  .dark .scrollbar-thin {
+    scrollbar-color: #5f6368 transparent;
+  }
+  
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #5f6368;
+  }
+  
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #80868b;
+  }
+}
+
+/* Google Sheets selection ring */
+@layer components {
+  .gs-selection-ring {
+    @apply outline-2 outline-primary-500 outline-offset-[-2px];
+  }
+  
+  .gs-cell-base {
+    @apply border border-gs-border absolute flex items-center px-1 text-sm bg-white
+           transition-colors duration-150 select-none overflow-hidden whitespace-nowrap;
+  }
+  
+  .gs-cell-base:hover {
+    @apply bg-gs-bg-tertiary;
+  }
+  
+  .gs-cell-selected {
+    @apply outline-2 outline-primary-500 outline-offset-[-2px] z-10;
+  }
+  
+  .gs-cell-range {
+    @apply bg-gs-selection-light;
+  }
+  
+  .dark .gs-cell-range {
+    @apply bg-gs-selection-dark/30;
+  }
+  
+  .gs-header {
+    @apply flex items-center justify-center text-xs font-medium text-gs-text-secondary
+           bg-gs-bg-secondary border-gs-border-light cursor-pointer select-none
+           transition-colors duration-150;
+  }
+  
+  .gs-header:hover {
+    @apply bg-gs-bg-tertiary;
+  }
+  
+  .gs-header-selected {
+    @apply bg-primary-50 text-primary-600;
+  }
+  
+  .dark .gs-header-selected {
+    @apply bg-primary-800/30 text-primary-300;
+  }
+  
+  /* Button variants */
+  .gs-btn {
+    @apply inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium
+           rounded-gs transition-all duration-150 ease-gs
+           focus:outline-none focus:ring-2 focus:ring-primary-500/20;
+  }
+  
+  .gs-btn-icon {
+    @apply w-8 h-8 p-0 rounded-gs;
+  }
+  
+  .gs-btn-primary {
+    @apply gs-btn bg-primary-500 text-white hover:bg-primary-600
+           active:bg-primary-700 shadow-sm;
+  }
+  
+  .gs-btn-secondary {
+    @apply gs-btn bg-gs-bg-tertiary text-gs-text-primary hover:bg-gs-border-light
+           active:bg-gs-border border border-gs-border-light;
+  }
+  
+  .gs-btn-ghost {
+    @apply gs-btn text-gs-text-secondary hover:bg-gs-bg-tertiary hover:text-gs-text-primary
+           active:bg-gs-border-light;
+  }
+  
+  .dark .gs-btn-ghost {
+    @apply hover:bg-gs-dark-elevated hover:text-gs-dark-text-primary;
+  }
+  
+  /* Dark mode base styles */
+  .dark {
+    @apply bg-gs-dark-bg text-gs-dark-text-primary;
+  }
+  
+  .dark .gs-cell-base {
+    @apply bg-gs-dark-surface border-gs-border-dark text-gs-dark-text-primary;
+  }
+  
+  .dark .gs-cell-base:hover {
+    @apply bg-gs-dark-elevated;
+  }
+  
+  .dark .gs-header {
+    @apply bg-gs-dark-surface border-gs-border-dark text-gs-dark-text-secondary;
+  }
+  
+  .dark .gs-header:hover {
+    @apply bg-gs-dark-elevated;
+  }
+}
+
+/* Global styles */
+html {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  @apply overflow-hidden;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

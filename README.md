@@ -1,6 +1,15 @@
 # Excel-Vue - Spreadsheet Application
 
-Une application spreadsheet complète en **Vue 3 + TypeScript**, fusionnant les meilleures fonctionnalités de `excel/project` (Harena Grid) et `x-spreadsheet`.
+Une application spreadsheet moderne en **Vue 3 + TypeScript + TailwindCSS**, avec une interface professionnelle inspirée de Google Sheets et Excel Online.
+
+## ✨ Modernisation UI (Nouveau !)
+
+- **TailwindCSS** : Design system complet avec dark mode
+- **Palette Google Sheets** : Couleurs professionnelles et cohérentes
+- **Dark Mode** : Toggle élégant avec persistance
+- **Micro-interactions** : Animations fluides sur hover/focus
+- **Composants UI réutilisables** : BaseButton, BaseIcon, BaseTooltip, ThemeToggle
+- **Accessibilité** : Contrastes améliorés, focus rings visibles
 
 ## Architecture du Projet
 
@@ -275,9 +284,53 @@ excel-vue/
 
 - **Vue 3** : Framework frontend (Composition API)
 - **TypeScript** : Typage statique
+- **TailwindCSS** : Framework CSS utilitaire avec design system personnalisé
 - **Vite** : Build tool et dev server
 - **xlsx** : Bibliothèque XLSX (SheetJS)
 - **file-saver** : Téléchargement de fichiers
+
+## Design System
+
+### Palette de Couleurs
+
+Le design system utilise une palette inspirée de Google Sheets :
+
+```
+Primary:    #1a73e8 (Google Blue)
+Success:    #188038 (Google Green)
+Background: #ffffff / #f8f9fa (Light)
+Background: #1e1e1e / #2d2d2d (Dark)
+Text:       #202124 / #5f6368 (Light)
+Text:       #e8eaed / #9aa0a6 (Dark)
+Border:     #dadce0 / #e8eaed (Light)
+Border:     #3c4043 / #5f6368 (Dark)
+```
+
+### Composants UI
+
+Tous les composants UI sont dans `src/components/ui/` :
+
+- **BaseButton** : Boutons avec variants (primary, secondary, ghost, danger)
+- **BaseIcon** : Icônes SVG intégrées (pas de dépendances externes)
+- **BaseTooltip** : Tooltips avec positionnement automatique
+- **ThemeToggle** : Toggle dark/light mode avec persistance
+
+### Classes Utilitaires Custom
+
+```css
+/* Layout */
+.gs-cell-base          /* Style de base des cellules */
+.gs-cell-selected      /* Cellule sélectionnée */
+.gs-cell-range         /* Plage sélectionnée */
+.gs-header             /* Style des headers */
+.gs-header-selected    /* Header sélectionné */
+
+/* Boutons */
+.gs-btn                /* Bouton de base */
+.gs-btn-primary        /* Bouton primaire */
+.gs-btn-secondary      /* Bouton secondaire */
+.gs-btn-ghost          /* Bouton transparent */
+```
 
 ## Commandes
 

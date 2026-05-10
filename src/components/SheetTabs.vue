@@ -1,29 +1,34 @@
 <template>
-  <footer class="excel-sheet-tabs">
-    <button class="excel-add-sheet-btn" @click="$emit('addSheet')" title="Ajouter une feuille">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-      </svg>
-    </button>
+  <footer class="flex items-center px-2 py-1 bg-gs-bg-secondary border-t border-gs-border-light gap-2 dark:bg-gs-dark-surface dark:border-gs-border-dark">
+    <!-- Add Sheet Button -->
+    <BaseTooltip content="Ajouter une feuille">
+      <button
+        class="w-7 h-7 flex items-center justify-center rounded-full border border-gs-border-light bg-gs-bg-primary text-gs-text-secondary hover:border-primary-500 hover:text-primary-500 transition-all duration-150 shrink-0 dark:bg-gs-dark-bg dark:border-gs-border-dark dark:text-gs-dark-text-secondary"
+        @click="$emit('addSheet')"
+      >
+        <BaseIcon name="plus" :size="14" />
+      </button>
+    </BaseTooltip>
 
-    <div class="excel-tabs-container">
+    <!-- Tabs Container -->
+    <div class="flex gap-1 flex-1 overflow-x-auto scrollbar-thin">
       <div
         v-for="sheet in sheets"
         :key="sheet.id"
-        class="excel-tab"
-        :class="{ active: sheet.id === activeSheetId }"
+        class="group flex items-center px-3 py-1.5 bg-gs-bg-primary border border-gs-border-light border-b-0 rounded-t-gs cursor-pointer text-sm text-gs-text-secondary transition-all duration-150 min-w-[80px] relative hover:bg-gs-bg-tertiary dark:bg-gs-dark-bg dark:border-gs-border-dark dark:text-gs-dark-text-secondary dark:hover:bg-gs-dark-elevated"
+        :class="{ 
+          'bg-primary-500 text-white border-primary-500 font-medium hover:bg-primary-600 dark:bg-primary-600 dark:border-primary-600 dark:hover:bg-primary-700': sheet.id === activeSheetId 
+        }"
         @click="$emit('sheetChange', sheet.id)"
       >
-        <span class="excel-tab-name">{{ sheet.name }}</span>
+        <span class="flex-1">{{ sheet.name }}</span>
         <button
           v-if="sheets.length > 1"
-          class="excel-tab-close"
+          class="ml-1.5 w-3.5 h-3.5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:bg-black/10 transition-all"
+          :class="{ 'hover:bg-white/20': sheet.id === activeSheetId }"
           @click.stop="$emit('deleteSheet', sheet.id)"
-          title="Supprimer la feuille"
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
+          <BaseIcon name="x" :size="10" />
         </button>
       </div>
     </div>
@@ -32,6 +37,8 @@
 
 <script setup lang="ts">
 import type { Sheet } from '../types/spreadsheet'
+import BaseIcon from './ui/BaseIcon.vue'
+import BaseTooltip from './ui/BaseTooltip.vue'
 
 interface Props {
   sheets: Sheet[]
@@ -46,102 +53,3 @@ defineEmits<{
   deleteSheet: [sheetId: string]
 }>()
 </script>
-
-<style scoped>
-.excel-sheet-tabs {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  background: #f8f9fa;
-  border-top: 1px solid #dadce0;
-  gap: 4px;
-}
-
-.excel-add-sheet-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid #dadce0;
-  border-radius: 50%;
-  background: white;
-  color: #5f6368;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-}
-
-.excel-add-sheet-btn:hover {
-  background: #e8eaed;
-  border-color: #1a73e8;
-  color: #1a73e8;
-}
-
-.excel-tabs-container {
-  display: flex;
-  gap: 4px;
-  flex: 1;
-  overflow-x: auto;
-}
-
-.excel-tab {
-  display: flex;
-  align-items: center;
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid #dadce0;
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-  font-size: 13px;
-  color: #5f6368;
-  transition: all 0.15s;
-  position: relative;
-  min-width: 80px;
-}
-
-.excel-tab:hover {
-  background: #f1f3f4;
-}
-
-.excel-tab.active {
-  background: #1a73e8;
-  color: white;
-  border-color: #1a73e8;
-  font-weight: 500;
-}
-
-.excel-tab-name {
-  flex: 1;
-}
-
-.excel-tab-close {
-  margin-left: 6px;
-  width: 14px;
-  height: 14px;
-  border: none;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
-  border-radius: 50%;
-}
-
-.excel-tab:hover .excel-tab-close {
-  opacity: 0.7;
-}
-
-.excel-tab-close:hover {
-  opacity: 1 !important;
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.excel-tab.active .excel-tab-close:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-</style>

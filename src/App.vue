@@ -2,13 +2,13 @@
   <div class="spreadsheet-app">
     <!-- Header / Toolbar -->
     <Toolbar
-      :spreadsheet-name="store.spreadsheet.value.name"
-      :current-format="store.currentFormat.value"
-      :can-undo="store.canUndo.value"
-      :can-redo="store.canRedo.value"
-      :zoom="store.spreadsheet.value.zoom"
-      :is-favorite="store.isFavorite.value"
-      :is-merge-active="store.isMergeActive.value"
+      :spreadsheet-name="spreadsheetName"
+      :current-format="currentFormat"
+      :can-undo="canUndo"
+      :can-redo="canRedo"
+      :zoom="zoom"
+      :is-favorite="isFavorite"
+      :is-merge-active="isMergeActive"
       :paint-format-active="store.isPaintFormatActive()"
       @undo="store.undo"
       @redo="store.redo"
@@ -27,7 +27,7 @@
       @textwrap="handleTextWrap"
       @share="handleShare"
       @toggle-favorite="store.toggleFavorite"
-      @formula-help="store.showFormulaHelp.value = true"
+      @formula-help="store.showFormulaHelp = true"
       @export-csv="handleExportCSV"
       @export-xlsx="handleExportXLSX"
       @import-csv="handleImportCSV"
@@ -43,25 +43,25 @@
     
     <!-- Formula Bar -->
     <FormulaBar
-      :selected-cell="store.selectedCell.value"
-      :cell-value="store.selectedCellData.value?.value || ''"
-      :cell-formula="store.selectedCellData.value?.formula"
+      :selected-cell="selectedCell"
+      :cell-value="selectedCellData?.value || ''"
+      :cell-formula="selectedCellData?.formula"
       @formula-change="handleFormulaChange"
-      @insert-function="store.showFormulaHelp.value = true"
+      @insert-function="store.showFormulaHelp = true"
     />
     
     <!-- Grid Area -->
     <div class="grid-wrapper">
       <SpreadsheetGrid
-        :sheet="store.activeSheet.value"
-        :selected-cell="store.selectedCell.value"
-        :selection-range="store.selectionRange.value"
-        :editing-cell="store.editingCell.value"
-        :zoom="store.spreadsheet.value.zoom"
-        :show-grid="store.spreadsheet.value.showGrid"
+        :sheet="activeSheet"
+        :selected-cell="selectedCell"
+        :selection-range="selectionRange"
+        :editing-cell="editingCell"
+        :zoom="zoom"
+        :show-grid="showGrid"
         :is-paint-format-active="store.isPaintFormatActive()"
-        :autofilter-range="store.autofilterRange.value"
-        :hidden-rows="store.hiddenRows.value"
+        :autofilter-range="autofilterRange"
+        :hidden-rows="hiddenRows"
         @cell-select="store.selectCell"
         @cell-range-select="store.selectRange"
         @cell-edit="store.startEdit"
@@ -77,8 +77,8 @@
     
     <!-- Sheet Tabs -->
     <SheetTabs
-      :sheets="store.spreadsheet.value.sheets"
-      :active-sheet-id="store.spreadsheet.value.activeSheetId"
+      :sheets="spreadsheet.sheets"
+      :active-sheet-id="spreadsheet.activeSheetId"
       @sheet-change="store.setActiveSheet"
       @add-sheet="store.addSheet"
       @delete-sheet="store.deleteSheet"
@@ -100,8 +100,8 @@
       @hide-row="store.hideRow"
       @hide-col="store.hideCol"
       @show-all="store.showAllRows"
-      @format-cells="store.showFormatModal.value = true"
-      @validation="store.showValidationModal.value = true"
+      @format-cells="store.showFormatModal = true"
+      @validation="store.showValidationModal = true"
       @sort-asc="handleSortAscending"
       @sort-desc="handleSortDescending"
       @click.stop
@@ -109,8 +109,8 @@
     
     <!-- Formula Help Modal -->
     <FormulaHelpModal
-      :show="store.showFormulaHelp.value"
-      @close="store.showFormulaHelp.value = false"
+      :show="store.showFormulaHelp"
+      @close="store.showFormulaHelp = false"
     />
   </div>
   
@@ -133,7 +133,7 @@
 
   <PrintPreview
     :show="showPrintPreview"
-    :spreadsheet-name="store.spreadsheet.value.name"
+    :spreadsheet-name="spreadsheetName"
     @close="showPrintPreview = false"
     @print="handlePrint"
   />
@@ -144,6 +144,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import type { CellPosition, CellFormat } from './types/spreadsheet'
 import { indexToColumn, cellKey } from './utils/helpers'
 import { useSpreadsheetStore } from './stores'
@@ -172,6 +173,29 @@ import Toast from './components/Toast.vue'
 // ============================================================================
 
 const store = useSpreadsheetStore()
+
+// Destructurer les refs pour les templates (évite .value dans les templates)
+const {
+  spreadsheet,
+  selectedCell,
+  selectionRange,
+  editingCell,
+  currentFormat,
+  canUndo,
+  canRedo,
+  selectedCellData,
+  isMergeActive,
+  isFavorite,
+  autofilterRange,
+  hiddenRows
+} = storeToRefs(store)
+
+// Wrappers pour les propriétés imbriquées (évite les accès complexes dans le template)
+const spreadsheetName = computed(() => spreadsheet.value.name)
+const zoom = computed(() => spreadsheet.value.zoom)
+const activeSheet = computed(() => store.activeSheet)
+const showGrid = computed(() => spreadsheet.value.showGrid)
+
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 // ============================================================================
@@ -207,8 +231,8 @@ function handleFormatChange(format: Partial<CellFormat>) {
 }
 
 function handleFormulaChange(value: string) {
-  if (!store.selectedCell.value) return
-  store.updateCellValue(store.selectedCell.value, value)
+  if (!selectedCell.value) return
+  store.updateCellValue(selectedCell.value, value)
 }
 
 function handleCellValueChange(position: CellPosition, value: string) {
@@ -234,20 +258,21 @@ function handlePaste() {
 }
 
 function handleFilterClick(col: number, position: { top: number; left: number }) {
-  if (!store.autofilterRange.value) return
+  if (!autofilterRange.value) return
 
   const values: string[] = []
-  const { sri, eri } = store.autofilterRange.value
+  const { sri, eri } = autofilterRange.value
+  const activeId = spreadsheet.value.activeSheetId
 
   for (let row = sri; row <= eri; row++) {
     const key = cellKey(row, col)
-    const cell = store.activeSheet.value.cells.get(key)
+    const cell = store.sheetsData[activeId]?.[key]
     values.push(cell?.value || '')
   }
 
   filterColumnIndex.value = col
   filterColumnValues.value = values
-  filterSelectedValues.value = store.activeFilters.value.get(col) || [...new Set(values)]
+  filterSelectedValues.value = store.activeFilters.get(col) || [...new Set(values)]
   filterDropdownPosition.value = position
   showFilterDropdown.value = true
 }
@@ -285,16 +310,16 @@ function handleBorders(type: string = 'all') {
 }
 
 function handleInsertFunction(name?: string) {
-  if (name && store.selectedCell.value) {
-    store.updateCellValue(store.selectedCell.value, `=${name}()`)
+  if (name && selectedCell.value) {
+    store.updateCellValue(selectedCell.value, `=${name}()`)
     toastRef.value?.success(`Fonction ${name} insérée`)
   } else {
-    store.showFormulaHelp.value = true
+    store.showFormulaHelp = true
   }
 }
 
 function handleCurrencyFormat() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une cellule d\'abord')
     return
   }
@@ -303,7 +328,7 @@ function handleCurrencyFormat() {
 }
 
 function handlePercentageFormat() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une cellule d\'abord')
     return
   }
@@ -312,7 +337,7 @@ function handlePercentageFormat() {
 }
 
 function handleNumberFormat() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une cellule d\'abord')
     return
   }
@@ -321,7 +346,7 @@ function handleNumberFormat() {
 }
 
 function handleSortAscending() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une colonne d\'abord')
     return
   }
@@ -330,7 +355,7 @@ function handleSortAscending() {
 }
 
 function handleSortDescending() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une colonne d\'abord')
     return
   }
@@ -339,7 +364,7 @@ function handleSortDescending() {
 }
 
 function handleClearFormat() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une cellule d\'abord')
     return
   }
@@ -353,7 +378,7 @@ function handleAutofilter() {
 }
 
 function handleTextWrap() {
-  if (!store.selectionRange.value && !store.selectedCell.value) {
+  if (!selectionRange.value && !selectedCell.value) {
     toastRef.value?.info('Sélectionnez une cellule d\'abord')
     return
   }
@@ -366,12 +391,16 @@ function handleTextWrap() {
 // ============================================================================
 
 function handleExportCSV() {
-  exportToCSV(store.activeSheet.value.cells, `${store.spreadsheet.value.name}.csv`)
+  const activeId = spreadsheet.value.activeSheetId
+  const cellsMap = new Map(Object.entries(store.sheetsData[activeId] || {}))
+  exportToCSV(cellsMap, spreadsheetName.value + '.csv')
   toastRef.value?.success('Export CSV réussi')
 }
 
 function handleExportXLSX() {
-  exportToXLSX(store.activeSheet.value.cells, `${store.spreadsheet.value.name}.xlsx`)
+  const activeId = spreadsheet.value.activeSheetId
+  const cellsMap = new Map(Object.entries(store.sheetsData[activeId] || {}))
+  exportToXLSX(cellsMap, spreadsheetName.value + '.xlsx')
   toastRef.value?.success('Export XLSX réussi')
 }
 
@@ -380,7 +409,8 @@ function handleImportCSV() {
     try {
       const cells = await importFromCSV(file)
       store.saveState('Import CSV')
-      store.activeSheet.value.cells = cells
+      const activeId = spreadsheet.value.activeSheetId
+      store.sheetsData[activeId] = Object.fromEntries(cells)
       toastRef.value?.success('Import CSV réussi')
     } catch (error) {
       toastRef.value?.error('Erreur lors de l\'importation CSV')
@@ -393,7 +423,8 @@ function handleImportXLSX() {
     try {
       const cells = await importFromXLSX(file)
       store.saveState('Import XLSX')
-      store.activeSheet.value.cells = cells
+      const activeId = spreadsheet.value.activeSheetId
+      store.sheetsData[activeId] = Object.fromEntries(cells)
       toastRef.value?.success('Import XLSX réussi')
     } catch (error) {
       toastRef.value?.error('Erreur lors de l\'importation XLSX')
@@ -407,12 +438,12 @@ function handleImportXLSX() {
 
 function getSelectedPositions(): CellPosition[] {
   const positions: CellPosition[] = []
-  if (store.selectionRange.value) {
-    for (const pos of iterateRange(store.selectionRange.value)) {
+  if (selectionRange.value) {
+    for (const pos of iterateRange(selectionRange.value)) {
       positions.push(pos)
     }
-  } else if (store.selectedCell.value) {
-    positions.push(store.selectedCell.value)
+  } else if (selectedCell.value) {
+    positions.push(selectedCell.value)
   }
   return positions
 }
@@ -441,19 +472,19 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
         }
         break
       case 'c':
-        if (store.selectionRange.value) {
+        if (selectionRange.value) {
           store.copy()
           toastRef.value?.info('Cellules copiées')
         }
         break
       case 'x':
-        if (store.selectionRange.value) {
+        if (selectionRange.value) {
           store.cut()
           toastRef.value?.info('Cellules coupées')
         }
         break
       case 'v':
-        if (store.selectedCell.value) {
+        if (selectedCell.value) {
           store.paste()
           toastRef.value?.success('Cellules collées')
         }
