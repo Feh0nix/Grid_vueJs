@@ -19,6 +19,7 @@ export interface CellFormat {
   suffix?: string
   decimals?: number
   border?: CellBorder
+  excelNumberFormat?: string | number
 }
 
 export interface CellBorder {
@@ -40,6 +41,7 @@ export interface CellData {
   formula?: string
   format: CellFormat
   computed?: boolean
+  valueType?: 'text' | 'number' | 'boolean' | 'error'
 }
 
 export type CellMap = Map<string, CellData>
@@ -64,6 +66,23 @@ export interface MergeCell {
 
 export type MergeMap = Map<string, MergeCell>
 
+export interface ChartDefinition {
+  id: string
+  title: string
+  type: 'column' | 'line'
+  range: CellRange
+}
+
+export interface ConditionalFormatRule {
+  id: string
+  range: CellRange
+  operator: 'greater' | 'less' | 'between' | 'contains'
+  value: string
+  value2?: string
+  backgroundColor: string
+  color: string
+}
+
 // ============================================================================
 // FEUILLES ET VALIDATION
 // ============================================================================
@@ -71,6 +90,7 @@ export type MergeMap = Map<string, MergeCell>
 export interface ValidationRule {
   type: 'number' | 'text' | 'date' | 'list' | 'custom'
   required?: boolean
+  integer?: boolean
   min?: number | string
   max?: number | string
   values?: string[]  // for list type
@@ -96,6 +116,8 @@ export interface Sheet {
   hiddenRows: Set<number>
   hiddenCols: Set<number>
   freeze?: { row: number; col: number }
+  charts?: ChartDefinition[]
+  conditionalFormats?: ConditionalFormatRule[]
   styles?: CellStyle[]
 }
 

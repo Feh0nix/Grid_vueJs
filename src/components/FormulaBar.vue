@@ -22,6 +22,7 @@
         type="text"
         class="w-full h-7 px-2 text-sm bg-gs-bg-primary border border-gs-border-light rounded-gs text-gs-text-primary placeholder:text-gs-text-tertiary focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:bg-gs-dark-bg dark:border-gs-border-dark dark:text-gs-dark-text-primary dark:placeholder:text-gs-dark-text-tertiary"
         :value="inputValue"
+        @focus="onFocus"
         @input="onInput"
         @keydown.enter="onConfirm"
         @blur="onConfirm"
@@ -32,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import type { CellPosition } from '../types/spreadsheet'
 import { coordsToCellRef } from '../utils/helpers'
 import BaseTooltip from './ui/BaseTooltip.vue'
@@ -46,12 +47,14 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  formulaChange: [value: string]
+  formulaChange: [value: string, position: CellPosition]
   insertFunction: []
 }>()
 
 const inputRef = ref<HTMLInputElement>()
 const inputValue = ref('')
+const editPosition = ref<CellPosition | null>(null)
+const dirty = ref(false)
 
 const cellRef = computed(() => {
   if (!props.selectedCell) return 'A1'
@@ -59,20 +62,30 @@ const cellRef = computed(() => {
 })
 
 // Sync with props only when not focused
-watch(() => props.cellFormula || props.cellValue, (newValue) => {
+watch(() => [props.selectedCell?.row, props.selectedCell?.col, props.cellFormula, props.cellValue] as const, () => {
   if (document.activeElement !== inputRef.value) {
-    inputValue.value = newValue || ''
+    inputValue.value = props.cellFormula || props.cellValue || ''
   }
 }, { immediate: true })
 
 const onInput = (e: Event) => {
   const value = (e.target as HTMLInputElement).value
   inputValue.value = value
-  emit('formulaChange', value)
+  dirty.value = true
 }
 
+const onFocus = () => {
+  editPosition.value = props.selectedCell ? { ...props.selectedCell } : null
+  dirty.value = false
+}
 const onConfirm = () => {
-  emit('formulaChange', inputValue.value)
+  const committed = inputValue.value
+  if (dirty.value && editPosition.value) emit('formulaChange', inputValue.value, editPosition.value)
+  dirty.value = false
+  nextTick(() => {
+    const current = props.cellFormula || props.cellValue || ''
+    if (document.activeElement !== inputRef.value || inputValue.value === committed && current !== committed) inputValue.value = current
+  })
 }
 
 // Focus input programmatically

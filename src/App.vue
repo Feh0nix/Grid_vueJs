@@ -3,6 +3,7 @@
     <!-- Header / Toolbar -->
     <Toolbar
       :spreadsheet-name="spreadsheetName"
+      :save-error="store.saveError"
       :current-format="currentFormat"
       :can-undo="canUndo"
       :can-redo="canRedo"
@@ -11,6 +12,7 @@
       :is-merge-active="isMergeActive"
       :paint-format-active="store.isPaintFormatActive()"
       @undo="store.undo"
+      @rename="store.setSpreadsheetName"
       @redo="store.redo"
       @print="showPrintPreview = true"
       @paint-format="store.activatePaintFormat"
@@ -22,10 +24,12 @@
       @format-change="handleFormatChange"
       @merge-cells="store.mergeCells"
       @borders="handleBorders"
-      @freeze="store.freezePanes"
+      @freeze="handleFreeze"
       @autofilter="handleAutofilter"
       @textwrap="handleTextWrap"
       @share="handleShare"
+      @validation="store.showValidationModal = true"
+      @conditional-format="showConditionalFormat = true"
       @toggle-favorite="store.toggleFavorite"
       @formula-help="store.showFormulaHelp = true"
       @export-csv="handleExportCSV"
@@ -35,7 +39,7 @@
       @sort-asc="handleSortAscending"
       @sort-desc="handleSortDescending"
       @insert-function="handleInsertFunction"
-      @insert-chart="toastRef?.info('Graphique: fonctionnalité à venir')"
+      @insert-chart="handleInsertChart"
       @insert-image="toastRef?.info('Image: fonctionnalité à venir')"
       @insert-link="toastRef?.info('Lien: fonctionnalité à venir')"
       @insert-comment="toastRef?.info('Commentaire: fonctionnalité à venir')"
@@ -49,6 +53,14 @@
       @formula-change="handleFormulaChange"
       @insert-function="store.showFormulaHelp = true"
     />
+
+    <div v-if="findOpen" class="find-bar" role="search" aria-label="Rechercher dans la feuille">
+      <input ref="findInput" v-model="findQuery" aria-label="Rechercher" placeholder="Rechercher dans la feuille" @keydown.enter.prevent="findMatch($event.shiftKey ? -1 : 1)" @keydown.escape.prevent="findOpen = false" />
+      <span aria-live="polite">{{ findMatches.length }} résultat{{ findMatches.length === 1 ? '' : 's' }}</span>
+      <button type="button" aria-label="Résultat précédent" @click="findMatch(-1)">↑</button>
+      <button type="button" aria-label="Résultat suivant" @click="findMatch(1)">↓</button>
+      <button type="button" aria-label="Fermer la recherche" @click="findOpen = false">×</button>
+    </div>
     
     <!-- Grid Area -->
     <div class="grid-wrapper">
@@ -66,6 +78,8 @@
         @cell-range-select="store.selectRange"
         @cell-edit="store.startEdit"
         @cell-value-change="handleCellValueChange"
+        @clear-selection="store.clearSelectionContents"
+        @autofill="store.autofill"
         @cell-edit-end="store.endEdit"
         @cell-format-change="store.updateCellFormat"
         @paint-format-apply="store.applyPaintFormat"
@@ -73,6 +87,7 @@
         @col-resize="store.resizeCol"
         @filter-click="handleFilterClick"
       />
+      <ChartPanel v-if="showCharts && charts.length" :charts="charts" :chart="selectedChart" :cells="store.sheetsData[spreadsheet.activeSheetId] || {}" :context="store.formulaContext" @close="showCharts = false" @select="selectedChartId = $event" @update="store.updateChart" @remove="store.removeChart" />
     </div>
     
     <!-- Sheet Tabs -->
@@ -82,7 +97,20 @@
       @sheet-change="store.setActiveSheet"
       @add-sheet="store.addSheet"
       @delete-sheet="store.deleteSheet"
+      @rename-sheet="handleRenameSheet"
     />
+    <div class="status-bar" aria-live="polite">
+      <span>Prêt</span>
+      <div class="status-spacer"></div>
+      <button v-if="charts.length" class="chart-toggle" type="button" @click="showCharts = !showCharts">Graphiques ({{ charts.length }})</button>
+      <template v-if="selectionStatistics.count">
+        <span>Nombre : {{ selectionStatistics.count }}</span>
+        <template v-if="selectionStatistics.numericCount">
+          <span>Moyenne : {{ formatStatistic(selectionStatistics.average) }}</span>
+          <span>Somme : {{ formatStatistic(selectionStatistics.sum) }}</span>
+        </template>
+      </template>
+    </div>
     
     <!-- Context Menu -->
     <ContextMenu
@@ -120,6 +148,8 @@
     @apply="store.applyBorder"
     @close="showBorderSelector = false"
   />
+  <ValidationModal :show="store.showValidationModal" :rule="selectedValidationRule" @close="store.showValidationModal = false" @save="handleSaveValidation" @clear="handleClearValidation" />
+  <ConditionalFormatModal :show="showConditionalFormat" :rules="activeSheet.conditionalFormats || []" :selection="conditionalSelection" @close="showConditionalFormat = false" @save="store.saveConditionalFormat" @remove="store.removeConditionalFormat" />
 
   <FilterDropdown
     :show="showFilterDropdown"
@@ -143,16 +173,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, computed, reactive, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { CellPosition, CellFormat } from './types/spreadsheet'
+import type { CellPosition, CellFormat, ValidationRule } from './types/spreadsheet'
 import { indexToColumn, cellKey } from './utils/helpers'
+import { selectionStats } from './utils/selectionStats'
 import { useSpreadsheetStore } from './stores'
 import { 
   exportToCSV, 
-  exportToXLSX, 
+  exportWorkbook,
   importFromCSV, 
-  importFromXLSX,
+  importWorkbook,
   createFileInput 
 } from './composables/useImportExport'
 
@@ -166,7 +197,10 @@ import BorderSelector from './components/BorderSelector.vue'
 import FilterDropdown from './components/FilterDropdown.vue'
 import PrintPreview from './components/PrintPreview.vue'
 import FormulaHelpModal from './components/FormulaHelpModal.vue'
+import ValidationModal from './components/ValidationModal.vue'
+import ConditionalFormatModal from './components/ConditionalFormatModal.vue'
 import Toast from './components/Toast.vue'
+import ChartPanel from './components/ChartPanel.vue'
 
 // ============================================================================
 // STORE INITIALIZATION
@@ -195,8 +229,55 @@ const spreadsheetName = computed(() => spreadsheet.value.name)
 const zoom = computed(() => spreadsheet.value.zoom)
 const activeSheet = computed(() => store.activeSheet)
 const showGrid = computed(() => spreadsheet.value.showGrid)
+const showConditionalFormat = ref(false)
+const conditionalSelection = computed(() => selectionRange.value || (selectedCell.value ? { sri: selectedCell.value.row, eri: selectedCell.value.row, sci: selectedCell.value.col, eci: selectedCell.value.col } : null))
+const selectedValidationRule = computed(() => activeSheet.value.validations.find(({ range }) => selectedCell.value && selectedCell.value.row >= range.sri && selectedCell.value.row <= range.eri && selectedCell.value.col >= range.sci && selectedCell.value.col <= range.eci)?.rule)
+const selectionStatistics = computed(() => selectionStats(store.sheetsData[spreadsheet.value.activeSheetId] || {}, selectionRange.value, store.formulaContext))
+const showCharts = ref(false)
+const selectedChartId = ref<string | null>(null)
+const charts = computed(() => activeSheet.value.charts || [])
+const selectedChart = computed(() => charts.value.find(chart => chart.id === selectedChartId.value) || charts.value[0])
+const formatStatistic = (value: number) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 4 }).format(value)
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+const findOpen = ref(false)
+const findQuery = ref('')
+const findInput = ref<HTMLInputElement | null>(null)
+const findMatches = computed(() => {
+  const query = findQuery.value.toLocaleLowerCase()
+  if (!query) return []
+  return Object.values(store.sheetsData[spreadsheet.value.activeSheetId] || {})
+    .filter(cell => `${cell.value}\n${cell.formula || ''}`.toLocaleLowerCase().includes(query))
+    .sort((a, b) => a.row - b.row || a.col - b.col)
+})
+function findMatch(direction: 1 | -1) {
+  const matches = findMatches.value
+  if (!matches.length) return
+  const index = matches.findIndex(cell => cell.row === selectedCell.value?.row && cell.col === selectedCell.value?.col)
+  const next = index < 0 ? (direction === 1 ? 0 : matches.length - 1) : (index + direction + matches.length) % matches.length
+  store.selectCell({ row: matches[next].row, col: matches[next].col })
+}
+function openFind() {
+  findOpen.value = true
+  nextTick(() => findInput.value?.focus())
+}
+watch(() => store.saveError, message => {
+  if (message) toastRef.value?.error(message)
+})
+watch(() => store.validationError, message => {
+  if (message) toastRef.value?.error(message)
+}, { flush: 'sync' })
+
+function handleSaveValidation(rule: ValidationRule) {
+  store.addValidation(rule)
+  store.showValidationModal = false
+  toastRef.value?.success('Règle de validation appliquée')
+}
+function handleClearValidation() {
+  store.clearValidation()
+  store.showValidationModal = false
+  toastRef.value?.success('Règle de validation supprimée')
+}
 
 // ============================================================================
 // UI STATE (hors store)
@@ -206,6 +287,26 @@ const contextMenu = reactive({
   show: false,
   position: { x: 0, y: 0 }
 })
+const clipboardToken = `${Date.now()}-${Math.random()}`
+const clipboardMime = 'application/x-grid-vue'
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && !!target.closest('input, textarea, [contenteditable="true"]')
+}
+function handleSystemCopy(event: ClipboardEvent) {
+  if (isTextEditingTarget(event.target) || !event.clipboardData || !selectedCell.value) return
+  if (event.type === 'cut') store.cut()
+  else store.copy()
+  event.clipboardData.setData('text/plain', store.selectionAsText())
+  event.clipboardData.setData(clipboardMime, clipboardToken)
+  event.preventDefault()
+}
+function handleSystemPaste(event: ClipboardEvent) {
+  if (isTextEditingTarget(event.target) || !event.clipboardData || !selectedCell.value) return
+  if (event.clipboardData.getData(clipboardMime) === clipboardToken) store.paste()
+  else if (event.clipboardData.types.includes('text/plain')) store.pasteText(event.clipboardData.getData('text/plain'))
+  else return
+  event.preventDefault()
+}
 
 const showBorderSelector = ref(false)
 const showPrintPreview = ref(false)
@@ -230,9 +331,8 @@ function handleFormatChange(format: Partial<CellFormat>) {
   store.updateCellFormat(positions, format)
 }
 
-function handleFormulaChange(value: string) {
-  if (!selectedCell.value) return
-  store.updateCellValue(selectedCell.value, value)
+function handleFormulaChange(value: string, position: CellPosition) {
+  store.updateCellValue(position, value)
 }
 
 function handleCellValueChange(position: CellPosition, value: string) {
@@ -254,7 +354,7 @@ function handleCopy() {
 function handlePaste() {
   store.paste()
   contextMenu.show = false
-  toastRef.value?.success('Cellules collées')
+  if (!store.validationError) toastRef.value?.success('Cellules collées')
 }
 
 function handleFilterClick(col: number, position: { top: number; left: number }) {
@@ -264,7 +364,7 @@ function handleFilterClick(col: number, position: { top: number; left: number })
   const { sri, eri } = autofilterRange.value
   const activeId = spreadsheet.value.activeSheetId
 
-  for (let row = sri; row <= eri; row++) {
+  for (let row = sri + 1; row <= eri; row++) {
     const key = cellKey(row, col)
     const cell = store.sheetsData[activeId]?.[key]
     values.push(cell?.value || '')
@@ -282,8 +382,31 @@ function handleApplyFilter(selectedValues: string[]) {
 }
 
 function handleShare() {
-  navigator.clipboard.writeText(window.location.href)
-  toastRef.value?.success('Lien copié dans le presse-papiers !')
+  toastRef.value?.info('Le partage de classeur sera disponible avec la sauvegarde en ligne.')
+}
+
+function handleInsertChart() {
+  const id = store.addChart()
+  if (!id) {
+    toastRef.value?.info('Sélectionnez une plage de 2 à 200 lignes et de 1 à 9 colonnes.')
+    return
+  }
+  selectedChartId.value = id
+  showCharts.value = true
+}
+
+function handleFreeze() {
+  if (!activeSheet.value.freeze && selectedCell.value?.row === 1 && selectedCell.value.col === 1) {
+    toastRef.value?.info('Sélectionnez une cellule sous les lignes et à droite des colonnes à figer.')
+    return
+  }
+  const unfreezing = !!activeSheet.value.freeze
+  store.freezePanes()
+  toastRef.value?.success(unfreezing ? 'Volets libérés' : 'Volets figés')
+}
+
+function handleRenameSheet(id: string, name: string) {
+  if (!store.renameSheet(id, name)) toastRef.value?.error('Nom invalide ou déjà utilisé (31 caractères maximum).')
 }
 
 function handlePrint() {
@@ -393,15 +516,18 @@ function handleTextWrap() {
 function handleExportCSV() {
   const activeId = spreadsheet.value.activeSheetId
   const cellsMap = new Map(Object.entries(store.sheetsData[activeId] || {}))
-  exportToCSV(cellsMap, spreadsheetName.value + '.csv')
+  exportToCSV(cellsMap, spreadsheetName.value + '.csv', store.formulaContext)
   toastRef.value?.success('Export CSV réussi')
 }
 
-function handleExportXLSX() {
-  const activeId = spreadsheet.value.activeSheetId
-  const cellsMap = new Map(Object.entries(store.sheetsData[activeId] || {}))
-  exportToXLSX(cellsMap, spreadsheetName.value + '.xlsx')
-  toastRef.value?.success('Export XLSX réussi')
+async function handleExportXLSX() {
+  try {
+    await exportWorkbook(spreadsheet.value.sheets, store.sheetsData, spreadsheetName.value + '.xlsx')
+    toastRef.value?.success('Export XLSX réussi')
+    if (spreadsheet.value.sheets.some(sheet => sheet.charts?.length || sheet.conditionalFormats?.length)) toastRef.value?.warning('Les graphiques et mises en forme conditionnelles ne sont pas inclus dans le fichier XLSX.', 8000)
+  } catch (error) {
+    toastRef.value?.error(error instanceof Error ? error.message : 'Erreur lors de l’exportation XLSX')
+  }
 }
 
 function handleImportCSV() {
@@ -421,13 +547,16 @@ function handleImportCSV() {
 function handleImportXLSX() {
   createFileInput('.xlsx,.xls', async (file) => {
     try {
-      const cells = await importFromXLSX(file)
+      const workbook = await importWorkbook(file)
       store.saveState('Import XLSX')
-      const activeId = spreadsheet.value.activeSheetId
-      store.sheetsData[activeId] = Object.fromEntries(cells)
+      spreadsheet.value.sheets = workbook.sheets
+      store.sheetsData = workbook.data
+      store.setActiveSheet(workbook.sheets[0].id)
       toastRef.value?.success('Import XLSX réussi')
+      if (workbook.warnings?.length) toastRef.value?.warning(workbook.warnings.join(' '), 8000)
+      toastRef.value?.info('Les graphiques et certaines fonctions Excel avancées peuvent ne pas être importés.', 8000)
     } catch (error) {
-      toastRef.value?.error('Erreur lors de l\'importation XLSX')
+      toastRef.value?.error(error instanceof Error ? `Import XLSX : ${error.message}` : 'Erreur lors de l’importation XLSX')
     }
   })
 }
@@ -461,6 +590,13 @@ function* iterateRange(range: { sri: number; sci: number; eri: number; eci: numb
 // ============================================================================
 
 function handleGlobalKeyDown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault()
+    if (store.saveWorkbook()) toastRef.value?.success('Classeur enregistré sur cet appareil')
+    return
+  }
+  const target = e.target as HTMLElement | null
+  if (target?.closest('input, textarea, [contenteditable="true"]')) return
   if (e.ctrlKey || e.metaKey) {
     switch (e.key.toLowerCase()) {
       case 'z':
@@ -471,31 +607,29 @@ function handleGlobalKeyDown(e: KeyboardEvent) {
           store.undo()
         }
         break
-      case 'c':
-        if (selectionRange.value) {
-          store.copy()
-          toastRef.value?.info('Cellules copiées')
-        }
+      case 'y':
+        e.preventDefault()
+        store.redo()
         break
-      case 'x':
-        if (selectionRange.value) {
-          store.cut()
-          toastRef.value?.info('Cellules coupées')
-        }
+      case 'b':
+        e.preventDefault()
+        handleFormatChange({ bold: !currentFormat.value.bold })
         break
-      case 'v':
-        if (selectedCell.value) {
-          store.paste()
-          toastRef.value?.success('Cellules collées')
-        }
+      case 'i':
+        e.preventDefault()
+        handleFormatChange({ italic: !currentFormat.value.italic })
+        break
+      case 'u':
+        e.preventDefault()
+        handleFormatChange({ underline: !currentFormat.value.underline })
         break
       case 'p':
         e.preventDefault()
         showPrintPreview.value = true
         break
-      case 's':
+      case 'f':
         e.preventDefault()
-        toastRef.value?.info('Sauvegarde simulée')
+        openFind()
         break
     }
   }
@@ -516,13 +650,22 @@ function handleClickOutside() {
 // ============================================================================
 
 onMounted(() => {
+  if (store.saveError) toastRef.value?.error(store.saveError)
+  window.addEventListener('beforeunload', store.saveWorkbook)
   document.addEventListener('keydown', handleGlobalKeyDown)
+  document.addEventListener('copy', handleSystemCopy)
+  document.addEventListener('cut', handleSystemCopy)
+  document.addEventListener('paste', handleSystemPaste)
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('contextmenu', handleContextMenu)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('beforeunload', store.saveWorkbook)
   document.removeEventListener('keydown', handleGlobalKeyDown)
+  document.removeEventListener('copy', handleSystemCopy)
+  document.removeEventListener('cut', handleSystemCopy)
+  document.removeEventListener('paste', handleSystemPaste)
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('contextmenu', handleContextMenu)
 })
@@ -541,9 +684,36 @@ onUnmounted(() => {
 
 .grid-wrapper {
   flex: 1;
+  display: flex;
+  min-height: 0;
   overflow: hidden;
   position: relative;
 }
+
+.find-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f5f7f5; border-bottom: 1px solid #d7ded9; font-size: 12px; }
+.find-bar input { width: min(300px, 45vw); padding: 5px 8px; border: 1px solid #aebbb1; border-radius: 3px; background: #fff; }
+.find-bar button { padding: 3px 8px; border-radius: 3px; color: #25683e; font-size: 16px; }
+.find-bar button:hover { background: #e0ebe3; }
+.status-bar { display: flex; align-items: center; gap: 18px; min-height: 25px; padding: 0 12px; background: #f4f6f4; border-top: 1px solid #d7ded9; color: #525b54; font-size: 11px; }
+.status-spacer { flex: 1; }
+.chart-toggle { color: #107c41; cursor: pointer; }
+.chart-toggle:hover { text-decoration: underline; }
+
+.grid-wrapper > .grid-container {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  grid-template-columns: 50px minmax(0, 1fr);
+  grid-template-rows: 25px minmax(0, 1fr);
+}
+.spreadsheet-app .grid-container .cell.selected,
+.spreadsheet-app .grid-container .cell.editing { outline-color: #107c41; }
+.spreadsheet-app .grid-container .selection-border { border-color: #107c41; }
+.spreadsheet-app .grid-container .autofill-handle { background: #107c41; }
+.spreadsheet-app .grid-container .col-header.selected,
+.spreadsheet-app .grid-container .row-header.selected { background: #dbeee1; color: #107c41; }
+.spreadsheet-app .grid-container .col-headers,
+.spreadsheet-app .grid-container .row-headers { position: relative; }
 
 /* Modal Styles */
 .modal {

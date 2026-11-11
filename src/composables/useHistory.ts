@@ -15,8 +15,8 @@ export function useHistory(limit: number = 50) {
   const history = ref<HistoryEntry[]>([])
   const currentIndex = ref(-1)
   
-  const canUndo = computed(() => currentIndex.value > 0)
-  const canRedo = computed(() => currentIndex.value < history.value.length - 1)
+  const canUndo = computed(() => currentIndex.value >= 0)
+  const canRedo = computed(() => currentIndex.value < history.value.length - 2)
   const historyCount = computed(() => history.value.length)
   
   // Push a new state to history
@@ -52,11 +52,12 @@ export function useHistory(limit: number = 50) {
   }
   
   // Undo - go back one step
-  const undo = (): HistoryEntry | null => {
+  const undo = (sheets: Sheet[], activeSheetId: string, sheetsData: Record<string, Record<string, CellData>>): HistoryEntry | null => {
     if (!canUndo.value) return null
-    
-    currentIndex.value--
-    const entry = history.value[currentIndex.value]
+    if (currentIndex.value === history.value.length - 1) {
+      history.value.push({ id: generateId(), timestamp: Date.now(), sheets: deepClone(sheets), activeSheetId, sheetsData: deepClone(sheetsData), description: 'Current state' })
+    }
+    const entry = history.value[currentIndex.value--]
     return deepClone(entry)
   }
   
@@ -64,8 +65,7 @@ export function useHistory(limit: number = 50) {
   const redo = (): HistoryEntry | null => {
     if (!canRedo.value) return null
     
-    currentIndex.value++
-    const entry = history.value[currentIndex.value]
+    const entry = history.value[++currentIndex.value + 1]
     return deepClone(entry)
   }
   

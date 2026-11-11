@@ -10,7 +10,7 @@
         :key="'col-' + col"
         class="col-header"
         :class="{ selected: isColSelected(col), 'has-filter': hasAutofilter(col) }"
-        :style="{ width: getColWidth(col) + 'px' }"
+        :style="{ position: 'absolute', width: getColWidth(col) + 'px', left: `${getColLeft(col) - (col <= frozenCols ? 0 : scrollLeft)}px`, zIndex: col <= frozenCols ? 2 : 1 }"
         @click="selectCol(col)"
       >
         {{ indexToColumn(col) }}
@@ -35,7 +35,7 @@
         :key="'row-' + row"
         class="row-header"
         :class="{ selected: isRowSelected(row) }"
-        :style="{ height: getRowHeight(row) + 'px' }"
+        :style="{ position: 'absolute', height: getRowHeight(row) + 'px', top: `${getRowTop(row) - (row <= frozenRows ? 0 : scrollTop)}px`, zIndex: row <= frozenRows ? 2 : 1 }"
         @click="selectRow(row)"
       >
         {{ row }}
@@ -57,17 +57,18 @@
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
     >
+      <div aria-hidden="true" :style="{ position: 'absolute', width: totalGridWidth + 'px', height: totalGridHeight + 'px', pointerEvents: 'none' }"></div>
       <!-- Freeze highlight lines -->
       <div v-if="sheet.freeze && (sheet.freeze.row > 0 || sheet.freeze.col > 0)" class="freeze-overlay">
         <div 
           v-if="sheet.freeze.row > 0" 
           class="freeze-highlight-line-h"
-          :style="{ top: getRowTop(sheet.freeze.row) + 'px' }"
+          :style="{ top: scrollTop + frozenHeight + 'px', left: scrollLeft + 'px', width: viewportWidth + 'px' }"
         ></div>
         <div 
           v-if="sheet.freeze.col > 0" 
           class="freeze-highlight-line-v"
-          :style="{ left: getColLeft(sheet.freeze.col) + 'px' }"
+          :style="{ left: scrollLeft + frozenWidth + 'px', top: scrollTop + 'px', height: viewportHeight + 'px' }"
         ></div>
       </div>
       <div
@@ -85,7 +86,6 @@
       >
         <template v-if="editingCell?.row === cell.row && editingCell?.col === cell.col">
           <input
-            ref="editInput"
             v-model="localEditValue"
             class="cell-input"
             @blur="saveEdit"
@@ -95,7 +95,12 @@
           />
         </template>
         <template v-else>
-          <span class="cell-content">{{ formatCellValue(cell) }}</span>
+          <span class="cell-content" :class="{ 'with-validation-list': isCellSelected(cell.row, cell.col) && listRuleAt(sheet.validations, cell.row, cell.col) }">{{ formatCellValue(cell) }}</span>
+          <select v-if="isCellSelected(cell.row, cell.col) && listRuleAt(sheet.validations, cell.row, cell.col)" class="validation-list-select" :aria-label="`Choisir une valeur pour ${indexToColumn(cell.col)}${cell.row}`" :value="listCellValue(cell)" @mousedown.stop @click.stop @keydown.stop @change="chooseListValue(cell, $event)">
+            <option v-if="!listRuleAt(sheet.validations, cell.row, cell.col)?.values?.includes(listCellValue(cell)) && (listCellValue(cell) !== '' || !listAllowsBlank(cell))" :value="listCellValue(cell)" disabled>{{ listCellValue(cell) || 'Choisir une valeur' }}</option>
+            <option v-if="listAllowsBlank(cell)" value="">(Vide)</option>
+            <option v-for="(item, index) in listRuleAt(sheet.validations, cell.row, cell.col)?.values || []" :key="index" :value="item">{{ item }}</option>
+          </select>
         </template>
         
         <!-- Validation error indicator -->
@@ -103,14 +108,9 @@
           <Icons name="validation"></Icons>
         </div>
         
-        <!-- Freeze indicator -->
-        <div v-if="isFrozenCell(cell)" class="freeze-indicator">
-          <Icons name="frozen"></Icons>
-        </div>
-        
         <!-- Autofill handle -->
         <div
-          v-if="isCellSelected(cell.row, cell.col) && isLastSelected(cell) && !isAutofilling"
+          v-if="isLastSelected(cell) && !isAutofilling"
           class="autofill-handle"
           @mousedown.stop="startAutofill"
         ></div>
@@ -134,11 +134,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { CellPosition, CellRange, Sheet, CellData, CellFormat } from '../types/spreadsheet'
 import { indexToColumn, cellKey, formatValue } from '../utils/helpers'
 import { useSpreadsheetStore } from '../stores'
 import { useFormula } from '../composables/useFormula'
+import { listRuleAt, validateValue } from '../utils/validation'
+import { conditionalFormat } from '../utils/conditionalFormat'
 import Icons from './Icons.vue'
 
 interface Props {
@@ -161,6 +163,7 @@ const emit = defineEmits<{
   cellEdit: [position: CellPosition]
   cellEditEnd: []
   cellValueChange: [position: CellPosition, value: string]
+  clearSelection: []
   cellFormatChange: [positions: CellPosition[], format: Partial<CellFormat>]
   autofill: [range: CellRange]
   rowResize: [row: number, height: number]
@@ -174,9 +177,10 @@ const store = useSpreadsheetStore()
 
 // Formula - evaluate function for computing cell formulas
 const formulaEvaluator = useFormula()
+const excelFormatter = shallowRef<(format: string | number, value: number) => string>()
+const currentCellMap = computed(() => new Map(Object.entries(store.sheetsData[store.spreadsheet.activeSheetId] || {})))
 
 const gridCells = ref<HTMLElement>()
-const editInput = ref<HTMLInputElement>()
 
 // State - Use editingCell prop instead of local isEditing
 const localEditValue = ref('')
@@ -192,6 +196,7 @@ const resizeIndex = ref(0)
 const isAutofilling = ref(false)
 const autofillStart = ref<CellPosition | null>(null)
 const autofillEnd = ref<CellPosition | null>(null)
+const autofillSource = ref<CellRange | null>(null)
 
 // Virtualization state
 const scrollTop = ref(0)
@@ -227,6 +232,12 @@ const allCols = computed(() => {
   }
   return cols
 })
+const frozenRows = computed(() => props.sheet.freeze?.row || 0)
+const frozenCols = computed(() => props.sheet.freeze?.col || 0)
+const frozenHeight = computed(() => getRowTop(frozenRows.value + 1))
+const frozenWidth = computed(() => getColLeft(frozenCols.value + 1))
+const totalGridHeight = computed(() => allRows.value.reduce((total, row) => total + getRowHeight(row), 0))
+const totalGridWidth = computed(() => allCols.value.reduce((total, col) => total + getColWidth(col), 0))
 
 // Calculate visible row range based on scroll position
 const visibleRowRange = computed(() => {
@@ -299,12 +310,12 @@ const visibleColRange = computed(() => {
 // Computed visible rows within viewport + buffer
 const visibleRows = computed(() => {
   const range = visibleRowRange.value
-  return allRows.value.filter(r => r >= range.start && r <= range.end)
+  return allRows.value.filter(r => r <= frozenRows.value || r >= range.start && r <= range.end)
 })
 
 const visibleCols = computed(() => {
   const range = visibleColRange.value
-  return allCols.value.filter(c => c >= range.start && c <= range.end)
+  return allCols.value.filter(c => c <= frozenCols.value || c >= range.start && c <= range.end)
 })
 
 const visibleCells = computed(() => {
@@ -365,6 +376,7 @@ interface CellStyle {
 
 const getCellStyle = (cell: CellData & { key: string }): CellStyle => {
   const format = cell.format || {}
+  const conditional = conditionalFormat(cell, props.sheet.conditionalFormats || [], currentCellMap.value, store.formulaContext)
   const merge = props.sheet.merges.get(cell.key)
   
   let width = getColWidth(cell.col)
@@ -372,18 +384,18 @@ const getCellStyle = (cell: CellData & { key: string }): CellStyle => {
   
   // Adjust for merged cells
   if (merge) {
-    for (let c = cell.col; c < cell.col + merge.colspan; c++) {
+    for (let c = cell.col + 1; c < cell.col + merge.colspan; c++) {
       width += getColWidth(c)
     }
-    for (let r = cell.row; r < cell.row + merge.rowspan; r++) {
+    for (let r = cell.row + 1; r < cell.row + merge.rowspan; r++) {
       height += getRowHeight(r)
     }
   }
   
   return {
     position: 'absolute',
-    left: `${getColLeft(cell.col)}px`,
-    top: `${getRowTop(cell.row)}px`,
+    left: `${getColLeft(cell.col) + (cell.col <= frozenCols.value ? scrollLeft.value : 0)}px`,
+    top: `${getRowTop(cell.row) + (cell.row <= frozenRows.value ? scrollTop.value : 0)}px`,
     width: `${width}px`,
     height: `${height}px`,
     fontWeight: format.bold ? 'bold' : 'normal',
@@ -391,11 +403,11 @@ const getCellStyle = (cell: CellData & { key: string }): CellStyle => {
     textDecoration: format.underline ? 'underline' : format.strikethrough ? 'line-through' : 'none',
     fontSize: `${format.fontSize || 11}px`,
     fontFamily: format.fontFamily || 'Arial',
-    color: format.color || '#000000',
-    backgroundColor: format.backgroundColor || '#ffffff',
+    color: conditional.color || format.color || '#000000',
+    backgroundColor: conditional.backgroundColor || format.backgroundColor || '#ffffff',
     textAlign: format.align || 'left',
     verticalAlign: format.verticalAlign || 'middle',
-    zIndex: merge ? 2 : 1
+    zIndex: (cell.row <= frozenRows.value ? 20 : 0) + (cell.col <= frozenCols.value ? 20 : 0) + (isCellSelected(cell.row, cell.col) ? 5 : merge ? 2 : 1)
   }
 }
 
@@ -412,7 +424,7 @@ const getColLeft = (col: number): number => {
 const getRowTop = (row: number): number => {
   let top = 0
   for (let i = 1; i < row; i++) {
-    if (!props.sheet.hiddenRows.has(i)) {
+    if (!props.sheet.hiddenRows.has(i) && !props.hiddenRows.has(i)) {
       top += getRowHeight(i)
     }
   }
@@ -420,13 +432,12 @@ const getRowTop = (row: number): number => {
 }
 
 const formatCellValue = (cell: CellData): string => {
-  if (cell.formula) {
-    const activeId = store.spreadsheet.activeSheetId
-    const cellsMap = new Map(Object.entries(store.sheetsData[activeId] || {}))
-    return formulaEvaluator.evaluate(cell.formula, cellsMap)
+  const value = cell.formula ? formulaEvaluator.evaluate(cell.formula, currentCellMap.value, store.formulaContext) : cell.value
+  if ((!cell.format?.format || cell.format.format === 'general') && cell.format?.excelNumberFormat !== undefined && excelFormatter.value && value.trim() !== '' && Number.isFinite(Number(value))) {
+    try { return excelFormatter.value(cell.format.excelNumberFormat, Number(value)) } catch { /* garder la valeur brute */ }
   }
   return formatValue(
-    cell.value,
+    value,
     cell.format?.format,
     cell.format?.decimals,
     cell.format?.prefix,
@@ -496,8 +507,9 @@ const getCellFromPoint = (x: number, y: number): CellPosition | null => {
   if (!gridCells.value) return null
   
   const rect = gridCells.value.getBoundingClientRect()
-  const relX = x - rect.left + scrollLeft.value
-  const relY = y - rect.top + scrollTop.value
+  const viewportX = x - rect.left, viewportY = y - rect.top
+  const relX = viewportX + (viewportX < frozenWidth.value ? 0 : scrollLeft.value)
+  const relY = viewportY + (viewportY < frozenHeight.value ? 0 : scrollTop.value)
   
   // Calculate column from x position (accounting for hidden columns)
   let col = 1
@@ -513,6 +525,7 @@ const getCellFromPoint = (x: number, y: number): CellPosition | null => {
   let row = 1
   let top = 0
   while (row <= MAX_ROWS) {
+    if (props.sheet.hiddenRows.has(row) || props.hiddenRows.has(row)) { row++; continue }
     const height = getRowHeight(row)
     if (top + height > relY) break
     top += height
@@ -608,91 +621,6 @@ const saveEdit = () => {
   emit('cellEditEnd')
 }
 
-const handleAutofillMove = (e: MouseEvent) => {
-  if (!isAutofilling.value || !gridCells.value) return
-  
-  const rect = gridCells.value.getBoundingClientRect()
-  const relX = e.clientX - rect.left + scrollLeft.value
-  const relY = e.clientY - rect.top + scrollTop.value
-  
-  // Find cell under mouse
-  let col = 1
-  let left = 0
-  for (let c = 1; c <= MAX_COLS; c++) {
-    if (props.sheet.hiddenCols.has(c)) continue
-    const width = getColWidth(c)
-    if (left + width > relX) break
-    left += width
-    col = c + 1
-  }
-  
-  let row = 1
-  let top = 0
-  for (let r = 1; r <= MAX_ROWS; r++) {
-    if (props.sheet.hiddenRows.has(r)) continue
-    const height = getRowHeight(r)
-    if (top + height > relY) break
-    top += height
-    row = r + 1
-  }
-  
-  if (autofillEnd.value) {
-    autofillEnd.value = { row, col }
-  }
-}
-
-const stopAutofill = () => {
-  if (isAutofilling.value && autofillEnd.value && props.selectionRange) {
-    // Apply autofill logic here
-    const { sri, sci, eri, eci } = props.selectionRange
-    const targetStartRow = Math.min(eri, autofillEnd.value.row)
-    const targetStartCol = Math.min(eci, autofillEnd.value.col)
-    const targetEndRow = Math.max(eri, autofillEnd.value.row)
-    const targetEndCol = Math.max(eci, autofillEnd.value.col)
-    
-    // Copy pattern from source to target
-    for (let r = targetStartRow; r <= targetEndRow; r++) {
-      for (let c = targetStartCol; c <= targetEndCol; c++) {
-        // Skip if in original selection
-        if (r >= sri && r <= eri && c >= sci && c <= eci) continue
-        
-        const sourceRow = sri + (r - targetStartRow) % (eri - sri + 1)
-        const sourceCol = sci + (c - targetStartCol) % (eci - sci + 1)
-        const sourceKey = cellKey(sourceRow, sourceCol)
-        const targetKey = cellKey(r, c)
-        
-        const activeId = store.spreadsheet.activeSheetId
-        const sourceCell = store.sheetsData[activeId]?.[sourceKey]
-        if (sourceCell) {
-          if (!store.sheetsData[activeId]) {
-            store.sheetsData[activeId] = {}
-          }
-          store.sheetsData[activeId][targetKey] = {
-            ...sourceCell,
-            row: r,
-            col: c
-          }
-        }
-      }
-    }
-    
-    // Emit value change for the range start to notify parent
-    if (props.selectionRange) {
-      emit('cellValueChange', { 
-        row: props.selectionRange.sri, 
-        col: props.selectionRange.sci 
-      }, '')
-    }
-  }
-
-  isAutofilling.value = false
-  autofillStart.value = null
-  autofillEnd.value = null
-  
-  document.removeEventListener('mousemove', handleAutofillMove)
-  document.removeEventListener('mouseup', stopAutofill)
-}
-
 const handleKeyDown = (e: KeyboardEvent) => {
   const isCurrentlyEditing = props.editingCell !== null
   
@@ -704,6 +632,15 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
   
   if (!props.selectedCell) return
+  if (e.altKey && e.key === 'ArrowDown' && listRuleAt(props.sheet.validations, props.selectedCell.row, props.selectedCell.col)) {
+    const select = gridCells.value?.querySelector<HTMLSelectElement>('.cell.selected .validation-list-select')
+    if (select) {
+      select.focus()
+      try { select.showPicker?.() } catch { /* Le navigateur peut refuser l’ouverture automatique. */ }
+      e.preventDefault()
+    }
+    return
+  }
   
   const { row, col } = props.selectedCell
   
@@ -713,8 +650,12 @@ const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault()
       break
     case 'ArrowDown':
-    case 'Enter':
       if (row < MAX_ROWS) emit('cellSelect', { row: row + 1, col })
+      e.preventDefault()
+      break
+    case 'Enter':
+      if (e.shiftKey && row > 1) emit('cellSelect', { row: row - 1, col })
+      else if (!e.shiftKey && row < MAX_ROWS) emit('cellSelect', { row: row + 1, col })
       e.preventDefault()
       break
     case 'ArrowLeft':
@@ -722,15 +663,19 @@ const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault()
       break
     case 'ArrowRight':
-    case 'Tab':
       if (col < MAX_COLS) {
         emit('cellSelect', { row, col: col + 1 })
       }
       e.preventDefault()
       break
+    case 'Tab':
+      if (e.shiftKey && col > 1) emit('cellSelect', { row, col: col - 1 })
+      else if (!e.shiftKey && col < MAX_COLS) emit('cellSelect', { row, col: col + 1 })
+      e.preventDefault()
+      break
     case 'Delete':
     case 'Backspace':
-      emit('cellValueChange', { row, col }, '')
+      emit('clearSelection')
       e.preventDefault()
       break
     case 'F2':
@@ -738,7 +683,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
         const key = cellKey(row, col)
         const activeId = store.spreadsheet.activeSheetId
         const cell = store.sheetsData[activeId]?.[key]
-        if (cell) startEdit(cell)
+        startEdit(cell || { row, col, value: '', format: {} })
         e.preventDefault()
       }
       break
@@ -756,6 +701,13 @@ const handleKeyDown = (e: KeyboardEvent) => {
       }
   }
 }
+
+const chooseListValue = (cell: CellData, event: Event) => {
+  emit('cellValueChange', { row: cell.row, col: cell.col }, (event.target as HTMLSelectElement).value)
+  nextTick(() => gridCells.value?.focus())
+}
+const listCellValue = (cell: CellData) => cell.formula ? formulaEvaluator.evaluate(cell.formula, currentCellMap.value, store.formulaContext) : cell.value
+const listAllowsBlank = (cell: CellData) => { const rule = listRuleAt(props.sheet.validations, cell.row, cell.col); return !!rule && rule.allowBlank !== false && !rule.required }
 
 const cancelEdit = () => {
   localEditValue.value = ''
@@ -811,20 +763,22 @@ const stopColResize = () => {
 }
 
 const startAutofill = (e: MouseEvent) => {
-  if (!props.selectedCell || !props.selectionRange) return
+  if (!props.selectedCell) return
+  const source = props.selectionRange || { sri: props.selectedCell.row, sci: props.selectedCell.col, eri: props.selectedCell.row, eci: props.selectedCell.col }
+  autofillSource.value = source
   
   isAutofilling.value = true
   autofillStart.value = { ...props.selectedCell }
   autofillEnd.value = { ...props.selectedCell }
   
   const handleAutofillMove = (moveEvent: MouseEvent) => {
-    if (!isAutofilling.value || !props.selectionRange) return
+    if (!isAutofilling.value) return
     
     const cell = getCellFromPoint(moveEvent.clientX, moveEvent.clientY)
     if (!cell) return
     
     // Calculate autofill range based on the original selection
-    const { sri, sci, eri, eci } = props.selectionRange
+    const { sri, sci, eri, eci } = source
     
     // Determine direction and extend range
     let newEri = eri
@@ -854,12 +808,12 @@ const startAutofill = (e: MouseEvent) => {
   }
   
   const handleAutofillUp = () => {
-    if (isAutofilling.value && autofillEnd.value && props.selectionRange) {
+    if (isAutofilling.value && autofillEnd.value) {
       const range: CellRange = {
-        sri: props.selectionRange.sri,
-        sci: props.selectionRange.sci,
-        eri: autofillEnd.value.row,
-        eci: autofillEnd.value.col
+        sri: Math.min(source.sri, autofillEnd.value.row),
+        sci: Math.min(source.sci, autofillEnd.value.col),
+        eri: Math.max(source.eri, autofillEnd.value.row),
+        eci: Math.max(source.eci, autofillEnd.value.col)
       }
       emit('autofill', range)
     }
@@ -867,6 +821,7 @@ const startAutofill = (e: MouseEvent) => {
     isAutofilling.value = false
     autofillStart.value = null
     autofillEnd.value = null
+    autofillSource.value = null
     
     document.removeEventListener('mousemove', handleAutofillMove)
     document.removeEventListener('mouseup', handleAutofillUp)
@@ -878,14 +833,14 @@ const startAutofill = (e: MouseEvent) => {
 }
 
 const getAutofillPreviewStyle = () => {
-  if (!props.selectionRange || !autofillEnd.value) return {}
+  if (!autofillSource.value || !autofillEnd.value) return {}
   
-  const { sri, sci } = props.selectionRange
-  const eri = autofillEnd.value.row
-  const eci = autofillEnd.value.col
+  const { sri, sci } = autofillSource.value
+  const eri = Math.max(autofillSource.value.eri, autofillEnd.value.row)
+  const eci = Math.max(autofillSource.value.eci, autofillEnd.value.col)
   
-  const startLeft = getColLeft(Math.min(sci, eci))
-  const startTop = getRowTop(Math.min(sri, eri))
+  const startLeft = getColLeft(Math.min(sci, autofillEnd.value.col))
+  const startTop = getRowTop(Math.min(sri, autofillEnd.value.row))
   const endLeft = getColLeft(Math.max(sci, eci)) + getColWidth(Math.max(sci, eci))
   const endTop = getRowTop(Math.max(sri, eri)) + getRowHeight(Math.max(sri, eri))
   
@@ -898,28 +853,15 @@ const getAutofillPreviewStyle = () => {
 }
 
 const hasValidationError = (cell: CellData): boolean => {
-  // Check if cell has validation error
   for (const validation of props.sheet.validations) {
     const { range, rule } = validation
     if (cell.row >= range.sri && cell.row <= range.eri && 
         cell.col >= range.sci && cell.col <= range.eci) {
-      if (rule.type === 'number') {
-        const val = parseFloat(cell.value)
-        if (isNaN(val)) return true
-        if (rule.min !== undefined && val < Number(rule.min)) return true
-        if (rule.max !== undefined && val > Number(rule.max)) return true
-      }
-      if (rule.type === 'list' && rule.values) {
-        if (!rule.values.includes(cell.value)) return true
-      }
+      const value = cell.formula ? formulaEvaluator.evaluate(cell.formula, currentCellMap.value, store.formulaContext) : cell.value
+      if (validateValue(value, rule)) return true
     }
   }
   return false
-}
-
-const isFrozenCell = (cell: CellData): boolean => {
-  if (!props.sheet.freeze) return false
-  return cell.row <= props.sheet.freeze.row || cell.col <= props.sheet.freeze.col
 }
 
 // Autofilter helpers
@@ -937,16 +879,16 @@ const getSelectionBorderStyle = () => {
   if (!props.selectionRange) return {}
 
   const { sri, sci, eri, eci } = props.selectionRange
-  const startLeft = getColLeft(sci)
-  const startTop = getRowTop(sri)
-  const endLeft = getColLeft(eci) + getColWidth(eci)
-  const endTop = getRowTop(eri) + getRowHeight(eri)
+  const startLeft = getColLeft(sci) + (sci <= frozenCols.value ? scrollLeft.value : 0)
+  const startTop = getRowTop(sri) + (sri <= frozenRows.value ? scrollTop.value : 0)
+  const endLeft = getColLeft(eci) + getColWidth(eci) + (eci <= frozenCols.value ? scrollLeft.value : 0)
+  const endTop = getRowTop(eri) + getRowHeight(eri) + (eri <= frozenRows.value ? scrollTop.value : 0)
 
   return {
     left: `${startLeft}px`,
     top: `${startTop}px`,
-    width: `${endLeft - startLeft}px`,
-    height: `${endTop - startTop}px`
+    width: `${Math.max(0, endLeft - startLeft)}px`,
+    height: `${Math.max(0, endTop - startTop)}px`
   }
 }
 
@@ -957,15 +899,32 @@ const handleScroll = (e: Event) => {
   scrollLeft.value = target.scrollLeft
 }
 
+watch(() => props.selectedCell, position => {
+  const grid = gridCells.value
+  if (!position || !grid) return
+  const top = getRowTop(position.row), left = getColLeft(position.col)
+  const bottom = top + getRowHeight(position.row), right = left + getColWidth(position.col)
+  if (position.row > frozenRows.value) {
+    if (top < grid.scrollTop + frozenHeight.value) grid.scrollTop = Math.max(0, top - frozenHeight.value)
+    else if (bottom > grid.scrollTop + grid.clientHeight) grid.scrollTop = bottom - grid.clientHeight
+  }
+  if (position.col > frozenCols.value) {
+    if (left < grid.scrollLeft + frozenWidth.value) grid.scrollLeft = Math.max(0, left - frozenWidth.value)
+    else if (right > grid.scrollLeft + grid.clientWidth) grid.scrollLeft = right - grid.clientWidth
+  }
+})
+
 const updateViewportSize = () => {
   if (gridCells.value) {
     viewportHeight.value = gridCells.value.clientHeight
     viewportWidth.value = gridCells.value.clientWidth
   }
 }
+let viewportObserver: ResizeObserver | undefined
 
 // Life cycle
 onMounted(() => {
+  import('xlsx').then(module => { excelFormatter.value = module.SSF.format }).catch(() => {})
   if (gridCells.value) {
     setTimeout(() => {
       if (gridCells.value && typeof gridCells.value.focus === 'function') {
@@ -973,6 +932,8 @@ onMounted(() => {
       }
     }, 0)
     gridCells.value.addEventListener('scroll', handleScroll, { passive: true })
+    viewportObserver = new ResizeObserver(updateViewportSize)
+    viewportObserver.observe(gridCells.value)
     updateViewportSize()
   }
   window.addEventListener('resize', updateViewportSize)
@@ -984,6 +945,7 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', handleColResize)
   document.removeEventListener('mouseup', stopColResize)
   window.removeEventListener('resize', updateViewportSize)
+  viewportObserver?.disconnect()
   if (gridCells.value) {
     gridCells.value.removeEventListener('scroll', handleScroll)
   }

@@ -334,6 +334,8 @@ Tous les composants UI sont dans `src/components/ui/` :
 
 ## Commandes
 
+Prérequis : Node.js 20.19 ou une version 22.12 ou ultérieure. La compatibilité des fichiers Excel et ses limites sont décrites dans [COMPATIBILITE_XLSX.md](./COMPATIBILITE_XLSX.md).
+
 ```bash
 # Installation
 npm install
@@ -343,6 +345,9 @@ npm run dev
 
 # Build production
 npm run build
+
+# Tests automatisés
+npm test
 
 # Preview production
 npm run preview

@@ -1,340 +1,69 @@
 <template>
-  <div v-if="show" class="validation-modal-overlay" @click.self="close">
-    <div class="validation-modal">
-      <div class="modal-header">
-        <h3>Validation de données</h3>
-        <button class="close-btn" @click="close">×</button>
-      </div>
-      
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Critère :</label>
-          <select v-model="validation.type" class="form-select">
-            <option value="">Aucune</option>
-            <option value="number">Nombre</option>
-            <option value="date">Date</option>
-            <option value="list">Liste</option>
-            <option value="text-length">Longueur du texte</option>
-            <option value="custom">Formule personnalisée</option>
+  <div v-if="show" class="overlay" @click.self="$emit('close')" @keydown.esc="$emit('close')">
+    <form class="dialog" role="dialog" aria-modal="true" aria-labelledby="validation-title" @submit.prevent="save">
+      <header><h2 id="validation-title">Validation des données</h2><button type="button" aria-label="Fermer" @click="$emit('close')">×</button></header>
+      <div class="body">
+        <p>La règle s’applique aux cellules sélectionnées et est incluse dans l’export XLSX. Les listes exportées doivent contenir au maximum 253 caractères, sans virgule ni guillemet.</p>
+        <label>Type de règle
+          <select v-model="type">
+            <option value="number">Nombre</option><option value="text">Longueur du texte</option>
+            <option value="date">Date</option><option value="list">Liste de valeurs</option>
           </select>
-        </div>
-        
-        <div v-if="validation.type === 'number'" class="form-group">
-          <label>Condition :</label>
-          <select v-model="validation.operator" class="form-select">
-            <option value="between">Entre</option>
-            <option value="not-between">Pas entre</option>
-            <option value="equal">Égal à</option>
-            <option value="not-equal">Différent de</option>
-            <option value="greater">Supérieur à</option>
-            <option value="less">Inférieur à</option>
-            <option value="greater-equal">Supérieur ou égal</option>
-            <option value="less-equal">Inférieur ou égal</option>
-          </select>
-        </div>
-        
-        <div v-if="validation.type === 'number'" class="form-row">
-          <div class="form-group">
-            <label>Valeur minimum :</label>
-            <input v-model="validation.min" type="number" class="form-input" placeholder="Min">
-          </div>
-          <div class="form-group" v-if="validation.operator === 'between' || validation.operator === 'not-between'">
-            <label>Valeur maximum :</label>
-            <input v-model="validation.max" type="number" class="form-input" placeholder="Max">
-          </div>
-        </div>
-        
-        <div v-if="validation.type === 'date'" class="form-group">
-          <label>Condition :</label>
-          <select v-model="validation.dateOperator" class="form-select">
-            <option value="between">Entre</option>
-            <option value="equal">Égal à</option>
-            <option value="greater">Après</option>
-            <option value="less">Avant</option>
-            <option value="today">Aujourd'hui</option>
-          </select>
-        </div>
-        
-        <div v-if="validation.type === 'list'" class="form-group">
-          <label>Liste de valeurs (séparées par des virgules) :</label>
-          <textarea v-model="validation.listValues" class="form-textarea" rows="3" placeholder="Valeur1, Valeur2, Valeur3"></textarea>
-        </div>
-        
-        <div v-if="validation.type === 'text-length'" class="form-group">
-          <label>Longueur :</label>
-          <input v-model="validation.textLength" type="number" class="form-input" placeholder="Nombre de caractères">
-        </div>
-        
-        <div v-if="validation.type === 'custom'" class="form-group">
-          <label>Formule :</label>
-          <input v-model="validation.formula" type="text" class="form-input" placeholder="=A1>0">
-        </div>
-        
-        <div class="form-group">
-          <label>Message d'erreur (optionnel) :</label>
-          <input v-model="validation.errorMessage" type="text" class="form-input" placeholder="Valeur invalide">
-        </div>
-        
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="validation.allowEmpty">
-            <span>Autoriser les cellules vides</span>
-          </label>
-        </div>
+        </label>
+        <template v-if="type !== 'list'">
+          <p v-if="type === 'date'">Saisissez les dates dans la grille au format AAAA-MM-JJ.</p>
+          <label>Minimum (facultatif)<input v-model="min" :type="type === 'date' ? 'date' : 'number'" :step="type === 'text' ? 1 : 'any'" /></label>
+          <label>Maximum (facultatif)<input v-model="max" :type="type === 'date' ? 'date' : 'number'" :step="type === 'text' ? 1 : 'any'" /></label>
+        </template>
+        <label v-else>Valeurs autorisées, une par ligne<textarea v-model="list" rows="4" placeholder="Oui&#10;Non"></textarea></label>
+        <label>Message d’erreur (facultatif)<input v-model="message" type="text" /></label>
+        <label v-if="type === 'number'" class="check"><input v-model="integer" type="checkbox" /> Nombres entiers uniquement</label>
+        <label class="check"><input v-model="allowBlank" type="checkbox" /> Autoriser une valeur vide</label>
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
       </div>
-      
-      <div class="modal-footer">
-        <button class="btn-text" @click="clear">Effacer</button>
-        <div class="btn-group">
-          <button class="btn-secondary" @click="close">Annuler</button>
-          <button class="btn-primary" @click="save">OK</button>
-        </div>
-      </div>
-    </div>
+      <footer><button type="button" class="remove" @click="$emit('clear')">Supprimer la règle</button><span></span><button type="button" @click="$emit('close')">Annuler</button><button class="primary" type="submit">Appliquer</button></footer>
+    </form>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import type { ValidationRule } from '../types/spreadsheet'
 
-interface ValidationRule {
-  type: string
-  operator?: string
-  dateOperator?: string
-  min?: number
-  max?: number
-  listValues?: string
-  textLength?: number
-  formula?: string
-  errorMessage?: string
-  allowEmpty: boolean
-}
-
-interface Props {
-  show: boolean
-  modelValue?: ValidationRule
-}
-
-const props = defineProps<Props>()
-const emit = defineEmits<{
-  'update:modelValue': [value: ValidationRule]
-  'close': []
-  'save': [rule: ValidationRule]
-  'clear': []
-}>()
-
-const defaultValidation: ValidationRule = {
-  type: '',
-  operator: 'between',
-  dateOperator: 'equal',
-  min: undefined,
-  max: undefined,
-  listValues: '',
-  textLength: undefined,
-  formula: '',
-  errorMessage: '',
-  allowEmpty: true
-}
-
-const validation = ref<ValidationRule>({ ...defaultValidation })
-
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    validation.value = { ...defaultValidation, ...newVal }
-  } else {
-    validation.value = { ...defaultValidation }
-  }
-}, { immediate: true })
-
+const props = defineProps<{ show: boolean; rule?: ValidationRule }>()
+const emit = defineEmits<{ close: []; save: [rule: ValidationRule]; clear: [] }>()
+const type = ref<'number' | 'text' | 'date' | 'list'>('number')
+const min = ref(''), max = ref(''), list = ref(''), message = ref(''), error = ref('')
+const allowBlank = ref(true)
+const integer = ref(false)
+watch(() => props.show, show => {
+  if (!show) return
+  const rule = props.rule
+  type.value = rule && ['number', 'text', 'date', 'list'].includes(rule.type) ? rule.type as typeof type.value : 'number'
+  min.value = rule?.min == null ? '' : String(rule.min)
+  max.value = rule?.max == null ? '' : String(rule.max)
+  list.value = rule?.values?.join('\n') || ''
+  message.value = rule?.message || ''
+  allowBlank.value = rule?.allowBlank !== false
+  integer.value = !!rule?.integer
+  error.value = ''
+})
 function save() {
-  emit('save', validation.value)
-  emit('update:modelValue', validation.value)
-  close()
-}
-
-function clear() {
-  validation.value = { ...defaultValidation }
-  emit('clear')
-  close()
-}
-
-function close() {
-  emit('close')
+  const values = list.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
+  if (type.value === 'list' && !values.length) { error.value = 'Ajoutez au moins une valeur.'; return }
+  if (type.value !== 'list' && min.value && max.value && (type.value === 'date' ? min.value > max.value : Number(min.value) > Number(max.value))) { error.value = 'Le minimum doit être inférieur ou égal au maximum.'; return }
+  if (type.value === 'text' && [min.value, max.value].some(value => value !== '' && (!Number.isInteger(Number(value)) || Number(value) < 0))) { error.value = 'La longueur doit être un entier positif ou nul.'; return }
+  emit('save', { type: type.value, min: min.value === '' || type.value === 'list' ? undefined : type.value === 'date' ? min.value : Number(min.value), max: max.value === '' || type.value === 'list' ? undefined : type.value === 'date' ? max.value : Number(max.value), values: type.value === 'list' ? values : undefined, message: message.value.trim() || undefined, allowBlank: allowBlank.value, integer: type.value === 'number' && integer.value || undefined })
 }
 </script>
 
 <style scoped>
-.validation-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.validation-modal {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  width: 400px;
-  max-width: 90vw;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 20px;
-  color: #999;
-  padding: 0;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.close-btn:hover {
-  background: #f5f5f5;
-  color: #333;
-}
-
-.modal-body {
-  padding: 20px;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 6px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.form-select,
-.form-input,
-.form-textarea {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 13px;
-  color: #333;
-  background: white;
-  box-sizing: border-box;
-}
-
-.form-select:focus,
-.form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #4b89ff;
-}
-
-.form-textarea {
-  resize: vertical;
-  font-family: inherit;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: #333;
-}
-
-.checkbox-label input {
-  cursor: pointer;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
-  border-top: 1px solid #e0e0e0;
-  background: #fafafa;
-  border-radius: 0 0 8px 8px;
-}
-
-.btn-group {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-text {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: #666;
-  border-radius: 4px;
-}
-
-.btn-text:hover {
-  background: #f0f0f0;
-}
-
-.btn-secondary {
-  background: white;
-  border: 1px solid #e0e0e0;
-  cursor: pointer;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: #333;
-  border-radius: 4px;
-}
-
-.btn-secondary:hover {
-  background: #f5f5f5;
-}
-
-.btn-primary {
-  background: #4b89ff;
-  border: none;
-  cursor: pointer;
-  padding: 8px 20px;
-  font-size: 13px;
-  color: white;
-  border-radius: 4px;
-}
-
-.btn-primary:hover {
-  background: #3a78ee;
-}
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; background: #0007; z-index: 1100; }
+.dialog { width: min(440px, 92vw); max-height: 90vh; overflow: auto; background: white; border-radius: 8px; color: #242b26; box-shadow: 0 16px 50px #0003; }
+header, footer { display: flex; align-items: center; gap: 8px; padding: 16px 20px; }
+header { justify-content: space-between; border-bottom: 1px solid #e0e5e1; } h2 { font-size: 16px; font-weight: 600; }
+header button { font-size: 22px; line-height: 1; } .body { padding: 16px 20px; display: grid; gap: 12px; font-size: 13px; }
+.body p { color: #56635a; } label { display: grid; gap: 5px; } input:not([type=checkbox]), select, textarea { width: 100%; padding: 7px 8px; border: 1px solid #acb9af; border-radius: 4px; background: white; }
+.check { display: flex; align-items: center; gap: 8px; } .error { color: #b3261e !important; }
+footer { border-top: 1px solid #e0e5e1; font-size: 13px; } footer span { flex: 1; } footer button { padding: 7px 10px; border-radius: 4px; } footer button:hover { background: #e8eeea; } footer .primary { color: white; background: #107c41; } footer .primary:hover { background: #0a6333; } .remove { color: #9a3129; }
 </style>

@@ -15,22 +15,31 @@ const baseFormulas: FormulaDefinition[] = [
   {
     key: 'AVERAGE',
     title: 'Average',
-    render: ary => ary.reduce((a, b) => Number(a) + Number(b), 0) / ary.length
+    render: ary => {
+      const numbers = ary.filter(v => typeof v === 'number' && Number.isFinite(v))
+      return numbers.length ? numbers.reduce((a, b) => a + b, 0) / numbers.length : '#DIV/0!'
+    }
   },
   {
     key: 'COUNT',
     title: 'Count',
-    render: ary => ary.filter(v => v !== '' && v !== null && v !== undefined).length
+    render: ary => ary.filter(v => typeof v === 'number' && Number.isFinite(v)).length
   },
   {
     key: 'MAX',
     title: 'Max',
-    render: ary => Math.max(...ary.map(v => Number(v) || 0))
+    render: ary => {
+      const numbers = ary.filter(v => typeof v === 'number' && Number.isFinite(v))
+      return numbers.length ? Math.max(...numbers) : 0
+    }
   },
   {
     key: 'MIN',
     title: 'Min',
-    render: ary => Math.min(...ary.map(v => Number(v) || 0))
+    render: ary => {
+      const numbers = ary.filter(v => typeof v === 'number' && Number.isFinite(v))
+      return numbers.length ? Math.min(...numbers) : 0
+    }
   },
   {
     key: 'IF',
@@ -207,9 +216,14 @@ export function numberCalc(op: string, a: number, b: number): number {
 // ============================================================================
 
 interface ExprToken {
-  type: 'number' | 'string' | 'cell' | 'range' | 'operator' | 'function' | 'paren'
+  type: 'number' | 'string' | 'cell' | 'range' | 'operator' | 'function' | 'functionStart' | 'paren' | 'error'
   value: string
+  sheet?: string
 }
+export interface FormulaContext { currentSheet: string; sheets: Map<string, CellMap> }
+const FUNCTION_START = Symbol('functionStart')
+const isFormulaError = (value: unknown): value is string => typeof value === 'string' && /^#(?:REF!|DIV\/0!|VALUE!|NAME\?|N\/A|NUM!|NULL!)$/.test(value)
+const parseValue = (value: string): number | string => value.trim() !== '' && Number.isFinite(Number(value)) ? Number(value) : value
 
 function tokenize(expr: string): ExprToken[] {
   const tokens: ExprToken[] = []
@@ -217,6 +231,21 @@ function tokenize(expr: string): ExprToken[] {
   
   while (i < expr.length) {
     const char = expr[i]
+    const qualified = expr.slice(i).match(/^(?:'((?:[^']|'')+)'|([A-Za-z_][A-Za-z0-9_.]*))!(\$?[A-Za-z]{1,3}\$?[1-9][0-9]*(?::\$?[A-Za-z]{1,3}\$?[1-9][0-9]*)?)/)
+    if (qualified) {
+      const value = qualified[3]
+      tokens.push({ type: value.includes(':') ? 'range' : 'cell', value, sheet: (qualified[1] || qualified[2]).replace(/''/g, "'") })
+      i += qualified[0].length
+      continue
+    }
+    if (char === '#') {
+      const error = expr.slice(i).match(/^#(?:REF!|DIV\/0!|VALUE!|NAME\?|N\/A|NUM!|NULL!)/i)
+      if (error) {
+        tokens.push({ type: 'error', value: error[0].toUpperCase() })
+        i += error[0].length
+        continue
+      }
+    }
     
     // Skip whitespace
     if (char === ' ') {
@@ -247,9 +276,9 @@ function tokenize(expr: string): ExprToken[] {
     }
     
     // Cell references or ranges
-    if (char >= 'A' && char <= 'Z' || char >= 'a' && char <= 'z') {
+    if (char >= 'A' && char <= 'Z' || char >= 'a' && char <= 'z' || char === '$') {
       let ref = ''
-      while (i < expr.length && (expr[i] >= 'A' && expr[i] <= 'Z' || expr[i] >= 'a' && expr[i] <= 'z' || expr[i] >= '0' && expr[i] <= '9')) {
+      while (i < expr.length && (expr[i] >= 'A' && expr[i] <= 'Z' || expr[i] >= 'a' && expr[i] <= 'z' || expr[i] >= '0' && expr[i] <= '9' || expr[i] === '$')) {
         ref += expr[i++]
       }
       
@@ -259,7 +288,7 @@ function tokenize(expr: string): ExprToken[] {
         range += expr[i++] // add :
         // Get the second part of range
         let ref2 = ''
-        while (i < expr.length && (expr[i] >= 'A' && expr[i] <= 'Z' || expr[i] >= 'a' && expr[i] <= 'z' || expr[i] >= '0' && expr[i] <= '9')) {
+        while (i < expr.length && (expr[i] >= 'A' && expr[i] <= 'Z' || expr[i] >= 'a' && expr[i] <= 'z' || expr[i] >= '0' && expr[i] <= '9' || expr[i] === '$')) {
           ref2 += expr[i++]
         }
         range += ref2
@@ -275,7 +304,7 @@ function tokenize(expr: string): ExprToken[] {
       let op = char
       i++
       // Check for two-char operators
-      if (i < expr.length && expr[i] === '=' && (char === '<' || char === '>' || char === '!')) {
+      if (i < expr.length && (expr[i] === '=' && (char === '<' || char === '>' || char === '!') || char === '<' && expr[i] === '>')) {
         op += expr[i++]
       }
       tokens.push({ type: 'operator', value: op })
@@ -296,7 +325,7 @@ function tokenize(expr: string): ExprToken[] {
       continue
     }
     
-    i++
+    throw new Error(`Caractère non pris en charge : ${char}`)
   }
   
   return tokens
@@ -315,11 +344,16 @@ function infixToPostfix(tokens: ExprToken[]): ExprToken[] {
   }
   
   for (const token of tokens) {
-    if (token.type === 'number' || token.type === 'string' || token.type === 'cell' || token.type === 'range') {
+    if (token.type === 'number' || token.type === 'string' || token.type === 'cell' || token.type === 'range' || token.type === 'error') {
       output.push(token)
     } else if (token.type === 'function') {
+      output.push({ type: 'functionStart', value: token.value })
       stack.push(token)
     } else if (token.type === 'operator') {
+      if (token.value === ',') {
+        while (stack.length > 0 && stack[stack.length - 1].value !== '(') output.push(stack.pop()!)
+        continue
+      }
       while (stack.length > 0 && 
              stack[stack.length - 1].type === 'operator' &&
              precedence[stack[stack.length - 1].value] >= precedence[token.value]) {
@@ -355,7 +389,8 @@ function infixToPostfix(tokens: ExprToken[]): ExprToken[] {
 export function evaluateFormula(
   formula: string,
   cells: CellMap,
-  evaluating: Set<string> = new Set()
+  evaluating: Set<string> = new Set(),
+  context?: FormulaContext
 ): string {
   if (!formula.startsWith('=')) return formula
   
@@ -376,7 +411,7 @@ export function evaluateFormula(
           processedTokens.push({ type: 'function', value: funcName })
           processedTokens.push(tokens[++i]) // push '('
         } else {
-          processedTokens.push(token)
+          return '#NAME?'
         }
       } else {
         processedTokens.push(token)
@@ -397,73 +432,80 @@ export function evaluateFormula(
         case 'string':
           stack.push(token.value)
           break
+        case 'error':
+          stack.push(token.value)
+          break
           
         case 'cell': {
-          const coords = cellRefToCoords(token.value)
+          const coords = cellRefToCoords(token.value.replace(/\$/g, ''))
           if (!coords) {
             stack.push(0)
             break
           }
           
+          const sheetName = token.sheet || context?.currentSheet || ''
+          const targetCells = token.sheet ? context?.sheets.get(token.sheet.toLocaleLowerCase()) : cells
+          if (!targetCells) { stack.push('#REF!'); break }
           const key = cellKey(coords.row, coords.col)
+          const evaluationKey = `${sheetName.toLocaleLowerCase()}!${key}`
           
           // Check for circular reference
-          if (evaluating.has(key)) {
+          if (evaluating.has(evaluationKey)) {
             stack.push('#REF!')
             break
           }
           
-          const cell = cells.get(key)
+          const cell = targetCells.get(key)
           if (!cell) {
             stack.push(0)
             break
           }
           
           if (cell.formula) {
-            evaluating.add(key)
-            const result = evaluateFormula(cell.formula, cells, evaluating)
-            evaluating.delete(key)
-            const numResult = parseFloat(result)
-            stack.push(isNaN(numResult) ? result : numResult)
+            evaluating.add(evaluationKey)
+            const result = evaluateFormula(cell.formula, targetCells, evaluating, context ? { ...context, currentSheet: sheetName } : undefined)
+            evaluating.delete(evaluationKey)
+            stack.push(parseValue(result))
           } else {
-            const numValue = parseFloat(cell.value)
-            stack.push(isNaN(numValue) ? cell.value : numValue)
+            stack.push(cell.valueType === 'text' ? cell.value : parseValue(cell.value))
           }
           break
         }
           
         case 'range': {
-          const range = parseRange(token.value)
+          const range = parseRange(token.value.replace(/\$/g, ''))
           if (!range) {
             stack.push([])
             break
           }
           
           const values: any[] = []
+          const sheetName = token.sheet || context?.currentSheet || ''
+          const targetCells = token.sheet ? context?.sheets.get(token.sheet.toLocaleLowerCase()) : cells
+          if (!targetCells) { stack.push('#REF!'); break }
           for (const pos of iterateRange(range)) {
             const key = cellKey(pos.row, pos.col)
+            const evaluationKey = `${sheetName.toLocaleLowerCase()}!${key}`
             
             // Check for circular reference
-            if (evaluating.has(key)) {
+            if (evaluating.has(evaluationKey)) {
               values.push('#REF!')
               continue
             }
             
-            const cell = cells.get(key)
+            const cell = targetCells.get(key)
             if (!cell) {
-              values.push(0)
+              values.push('')
               continue
             }
             
             if (cell.formula) {
-              evaluating.add(key)
-              const result = evaluateFormula(cell.formula, cells, evaluating)
-              evaluating.delete(key)
-              const numResult = parseFloat(result)
-              values.push(isNaN(numResult) ? result : numResult)
+              evaluating.add(evaluationKey)
+              const result = evaluateFormula(cell.formula, targetCells, evaluating, context ? { ...context, currentSheet: sheetName } : undefined)
+              evaluating.delete(evaluationKey)
+              values.push(parseValue(result))
             } else {
-              const numValue = parseFloat(cell.value)
-              values.push(isNaN(numValue) ? cell.value : numValue)
+              values.push(cell.valueType === 'text' ? cell.value : parseValue(cell.value))
             }
           }
           stack.push(values)
@@ -479,41 +521,38 @@ export function evaluateFormula(
           
           // Collect arguments
           const args: any[] = []
-          while (stack.length > 0) {
+          while (stack.length > 0 && stack[stack.length - 1] !== FUNCTION_START) {
             const arg = stack.pop()
             if (Array.isArray(arg)) {
               args.unshift(...arg)
             } else {
               args.unshift(arg)
             }
-            // Check if previous token was comma separator
-            if (stack.length > 0 && stack[stack.length - 1] === ',') {
-              stack.pop()
-            } else {
-              break
-            }
           }
+          stack.pop()
           
-          const result = funcDef.render(args)
+          const error = args.find(isFormulaError)
+          const result = token.value === 'IF' ? (isFormulaError(args[0]) ? args[0] : funcDef.render(args)) : error || funcDef.render(args)
           stack.push(result)
           break
         }
           
+        case 'functionStart':
+          stack.push(FUNCTION_START)
+          break
         case 'operator': {
-          if (token.value === ',') {
-            stack.push(',')
-            break
-          }
           
           const b = stack.pop()
           const a = stack.pop()
+          if (isFormulaError(a)) { stack.push(a); break }
+          if (isFormulaError(b)) { stack.push(b); break }
           
           let result: any
           switch (token.value) {
             case '+': result = numberCalc('+', a, b); break
             case '-': result = numberCalc('-', a, b); break
             case '*': result = numberCalc('*', a, b); break
-            case '/': result = numberCalc('/', a, b); break
+            case '/': result = Number(b) === 0 ? '#DIV/0!' : numberCalc('/', a, b); break
             case '=': result = a == b; break
             case '<>': result = a != b; break
             case '<': result = a < b; break
@@ -547,8 +586,8 @@ export function evaluateFormula(
 export function useFormula() {
   const formulas = ref<FormulaMap>(formulaMap)
   
-  const evaluate = (formula: string, cells: CellMap): string => {
-    return evaluateFormula(formula, cells)
+  const evaluate = (formula: string, cells: CellMap, context?: FormulaContext): string => {
+    return evaluateFormula(formula, cells, new Set(), context)
   }
   
   const isFormula = (value: string): boolean => {
@@ -562,12 +601,10 @@ export function useFormula() {
     
     if (cell.formula) {
       const result = evaluateFormula(cell.formula, cells)
-      const numResult = parseFloat(result)
-      return isNaN(numResult) ? result : numResult
+      return parseValue(result)
     }
     
-    const numValue = parseFloat(cell.value)
-    return isNaN(numValue) ? cell.value : numValue
+    return cell.valueType === 'text' ? cell.value : parseValue(cell.value)
   }
   
   return {

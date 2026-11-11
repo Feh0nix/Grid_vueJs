@@ -1,12 +1,17 @@
 <template>
   <div class="flex flex-col bg-gs-bg-secondary border-b border-gs-border-light dark:bg-gs-dark-surface dark:border-gs-border-dark">
-    <!-- Top Menu Bar -->
-    <div class="flex items-center px-3 py-1.5 bg-gs-bg-primary border-b border-gs-border dark:bg-gs-dark-bg dark:border-gs-border-dark">
-      <BaseButton variant="secondary" size="xs" icon="menu" @click="showFileMenu = !showFileMenu">
-        Fichier
-      </BaseButton>
-      <div class="flex-1"></div>
+    <div class="workbook-header">
+      <div class="workbook-mark" aria-hidden="true">▦</div>
+      <div class="workbook-identity">
+        <input :value="spreadsheetName" class="workbook-name" aria-label="Nom du classeur" @change="$emit('rename', ($event.target as HTMLInputElement).value)" />
+        <span class="workbook-save">{{ saveError ? 'Sauvegarde indisponible' : 'Sauvegarde locale automatique' }}</span>
+      </div>
+      <div class="workbook-spacer"></div>
       <ThemeToggle />
+    </div>
+    <div class="workbook-tabs" aria-label="Menu du classeur">
+      <button class="workbook-file" type="button" :aria-expanded="showFileMenu" @click="showFileMenu = !showFileMenu">Fichier</button>
+      <span class="workbook-tab-active">Accueil</span>
     </div>
 
     <!-- Main Toolbar - Google Sheets Style -->
@@ -283,20 +288,26 @@
           </BaseTooltip>
           <Transition name="dropdown">
             <div v-if="showMore" class="absolute top-full right-0 mt-1 bg-white border border-gs-border-light rounded-gs shadow-dropdown z-50 min-w-[160px] py-1 dark:bg-gs-dark-surface dark:border-gs-border-dark">
-              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportCSV'); showMore = false">
+              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportCsv'); showMore = false">
                 Exporter CSV
               </div>
-              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportXLSX'); showMore = false">
+              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportXlsx'); showMore = false">
                 Exporter XLSX
               </div>
               <div class="h-px bg-gs-border-light my-1 dark:bg-gs-border-dark"></div>
-              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importCSV'); showMore = false">
+              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importCsv'); showMore = false">
                 Importer CSV
               </div>
-              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importXLSX'); showMore = false">
+              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importXlsx'); showMore = false">
                 Importer XLSX
               </div>
               <div class="h-px bg-gs-border-light my-1 dark:bg-gs-border-dark"></div>
+              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('validation'); showMore = false">
+                Validation des données
+              </div>
+              <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('conditionalFormat'); showMore = false">
+                Mise en forme conditionnelle
+              </div>
               <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('share'); showMore = false">
                 Partager
               </div>
@@ -312,17 +323,17 @@
         <div class="px-3 py-2 text-sm font-semibold text-primary-500 border-b border-gs-border-light mb-1 dark:border-gs-border-dark">
           Fichier
         </div>
-        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportCSV'); showFileMenu = false">
+        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportCsv'); showFileMenu = false">
           Télécharger au format CSV
         </div>
-        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportXLSX'); showFileMenu = false">
+        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('exportXlsx'); showFileMenu = false">
           Télécharger au format XLSX
         </div>
         <div class="h-px bg-gs-border-light my-1 dark:bg-gs-border-dark"></div>
-        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importCSV'); showFileMenu = false">
+        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importCsv'); showFileMenu = false">
           Importer CSV
         </div>
-        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importXLSX'); showFileMenu = false">
+        <div class="px-3 py-2 cursor-pointer hover:bg-gs-bg-tertiary text-sm text-gs-text-primary dark:text-gs-dark-text-primary dark:hover:bg-gs-dark-elevated" @click="$emit('importXlsx'); showFileMenu = false">
           Importer XLSX
         </div>
         <div class="h-px bg-gs-border-light my-1 dark:bg-gs-border-dark"></div>
@@ -349,6 +360,7 @@ import ToolbarDivider from './ToolbarDivider.vue'
 
 interface Props {
   spreadsheetName: string
+  saveError: string
   currentFormat: CellFormat
   canUndo: boolean
   canRedo: boolean
@@ -361,6 +373,7 @@ interface Props {
 defineProps<Props>()
 
 defineEmits<{
+  rename: [name: string]
   undo: []
   redo: []
   print: []
@@ -377,12 +390,14 @@ defineEmits<{
   autofilter: []
   textwrap: []
   share: []
+  validation: []
+  conditionalFormat: []
   toggleFavorite: []
   formulaHelp: []
-  exportCSV: []
-  exportXLSX: []
-  importCSV: []
-  importXLSX: []
+  exportCsv: []
+  exportXlsx: []
+  importCsv: []
+  importXlsx: []
   sortAsc: []
   sortDesc: []
   insertFunction: [name?: string]
@@ -401,6 +416,19 @@ const showFunctionsMenu = ref(false)
 </script>
 
 <style scoped>
+.workbook-header { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: #107c41; color: white; }
+.workbook-mark { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid rgba(255,255,255,.6); border-radius: 4px; font-size: 23px; line-height: 1; }
+.workbook-identity { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.workbook-name { width: 190px; max-width: 35vw; padding: 3px 5px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: white; font-size: 14px; font-weight: 600; }
+.workbook-name:hover, .workbook-name:focus { border-color: rgba(255,255,255,.7); outline: none; }
+.workbook-save { color: #d3ecdd; font-size: 11px; white-space: nowrap; }
+.workbook-spacer { flex: 1; }
+.workbook-tabs { display: flex; align-items: stretch; height: 35px; padding: 0 12px; background: #f3f5f3; border-bottom: 1px solid #d7ded9; color: #323a34; font-size: 13px; }
+.workbook-file, .workbook-tab-active { display: flex; align-items: center; padding: 0 14px; }
+.workbook-file { border: 0; background: transparent; color: #107c41; font-weight: 600; cursor: pointer; }
+.workbook-file:hover { background: #e4ece6; }
+.workbook-tab-active { border-bottom: 2px solid #107c41; font-weight: 600; }
+@media (max-width: 600px) { .workbook-save { display: none; } }
 /* Dropdown transitions */
 .dropdown-enter-active,
 .dropdown-leave-active {
