@@ -1,0 +1,4 @@
+.grid-data/
+.verify-build/
+node_modules/
+dist/

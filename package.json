@@ -12,9 +12,9 @@
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc && vite build",
-    "preview": "vite preview",
+    "dev": "vite --configLoader runner",
+    "build": "vue-tsc && vite build --configLoader runner",
+    "preview": "vite preview --configLoader runner",
     "test": "node tests/run.mjs"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
     "file-saver": "^2.0.5",
     "pinia": "3.0.4",
     "vue": "^3.4.21",
+    "x-data-spreadsheet": "^1.1.9",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
@@ -31,6 +32,7 @@
     "@vitejs/plugin-vue": "^6.0.10",
     "autoprefixer": "^10.5.0",
     "esbuild": "^0.28.2",
+    "less": "^4.9.1",
     "lucide-vue-next": "^1.0.0",
     "postcss": "^8.5.13",
     "tailwind-scrollbar": "^3.1.0",
