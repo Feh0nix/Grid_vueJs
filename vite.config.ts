@@ -9,7 +9,8 @@ export default defineConfig({
     {
       name: 'noovy-grid-theme',
       transform(source, id) {
-        const path = id.replaceAll('\\', '/')
+        // Les ids de modules peuvent porter une query (`?v=...`, `?direct`).
+        const path = id.replaceAll('\\', '/').split('?')[0]
         if (!path.includes('/x-data-spreadsheet/src/')) return
         if (path.endsWith('/src/index.js')) {
           return source.replace('sheet${this.sheetIndex}', 'Feuille ${this.sheetIndex}')
@@ -37,15 +38,20 @@ export default defineConfig({
             .replace("-dropdown-header\`);", "-dropdown-header\`).attr('type', 'button');")
             .replace("this.headerEl.on('click'", "this.headerEl.on('focus', () => { const label = this.parent().attr('data-tooltip'); if (label) this.headerEl.attr('aria-label', label); }).on('click'")
             .replace('    contentEl.show();', `    contentEl.show();
-    if (this.el.closest('.x-spreadsheet-toolbar')) {
+    if (this.el.closest('.x-spreadsheet-toolbar, .x-spreadsheet-bottombar')) {
       const anchor = this.headerEl.el.getBoundingClientRect();
       const panel = contentEl.el.getBoundingClientRect();
+      const bar = this.el.closest('.x-spreadsheet-bottombar');
+      const topEdge = bar ? bar.getBoundingClientRect().top : anchor.top;
       Object.assign(contentEl.el.style, {
         position: 'fixed',
-        top: anchor.bottom + 4 + 'px',
-        left: Math.max(4, Math.min(anchor.left, window.innerWidth - panel.width - 4)) + 'px',
         right: 'auto',
         zIndex: 100,
+        left: Math.max(4, Math.min(anchor.left, window.innerWidth - (panel.width || 220) - 4)) + 'px',
+        top: anchor.top > window.innerHeight / 2 ? 'auto' : (anchor.bottom + 4) + 'px',
+        bottom: anchor.top > window.innerHeight / 2 ? (window.innerHeight - topEdge + 4) + 'px' : 'auto',
+        maxHeight: anchor.top > window.innerHeight / 2 ? (topEdge - 12) + 'px' : '',
+        overflowY: 'auto',
       });
     }`)
         }

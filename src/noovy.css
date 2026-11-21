@@ -1,49 +1,183 @@
 :root {
-  --bg: #F6F8F7;
+  /* --- Palette Noovy Grid : Modern Productivity --- */
+
+  /* Couleurs principales */
+  --navy: #0B1F44;   /* bleu nuit : identite, titres */
+  --blue: #2F7BFF;   /* bleu primaire : actions, liens */
+  --green: #00D68F;  /* vert signature : selection, validations */
+
+  /* Couleurs secondaires */
+  --blue-light: #E9F4FF;
+  --green-light: #E6FFF4;
+  --indigo: #E8E9FF;
+
+  /* Degrades officiels */
+  --gradient-blue: linear-gradient(135deg, #4F8BFF, var(--blue));
+  --gradient-green: linear-gradient(135deg, #00E6A4, var(--green));
+
+  /* Fonctionnelles */
+  --success: var(--green);
+  --info: var(--blue);
+  --warning: #FFB020;
+  --danger: #FF4D4F;
+
+  /* Fond et surfaces */
+  --bg: #F7FAFF;
+  --app-bg: #EDF2FB;
   --surface: #FFFFFF;
-  --surface-muted: #F1F5F3;
-  --ink: #14201B;
-  --ink-muted: #5B6B64;
-  --ink-soft: #34453E;
-  --line: #E3EAE6;
-  --grid-line: #E6ECE9;
-  --accent: #1E7B58;
-  --accent-hover: #17654A;
-  --accent-soft: #DDF3E8;
-  --accent-ink: #0F4A35;
-  --hover: #E8F0EC;
+  --surface-muted: #F0F7FF;
+  --hover: #E6F0FF;
+  --surface-active: #D6E7FF;
+
+  /* Surfaces flottantes */
+  --card-border: 1px solid rgb(11 31 68 / 7%);
+  --card-radius: 14px;
+  --card-shadow: 0 1px 2px rgb(11 31 68 / 4%), 0 10px 26px -16px rgb(11 31 68 / 28%);
+
+  /* Textes */
+  --ink: var(--navy);
+  --ink-muted: #6B7A99;
+  --ink-soft: var(--navy);
+  --ink-disabled: #A9B4C7;
+
+  /* Lignes (declinaisons du bleu clair) */
+  --line: var(--surface-active);
+  --grid-line: #E3EEFC;
+
+  /* Jetons applicatifs attendus par le theme x-data-spreadsheet */
+  --accent: var(--blue);
+  --accent-hover: #4F8BFF;
+  --accent-soft: var(--blue-light);
+  --accent-ink: var(--navy);
+  --brand-green: var(--green);
+  --brand-green-soft: var(--green-light);
+
   --ui-font: Inter, Arial, sans-serif;
 }
 
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-#app { display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 13px var(--ui-font); }
-.noovy-header {
+html { -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior: none; }
+#app {
+  /* dvh suit la barre d'adresse mobile ; % reste le repli des anciens navigateurs. */
+  height: 100dvh;
   box-sizing: border-box;
-  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: linear-gradient(180deg, #F4F8FF 0, var(--app-bg) 280px);
+  color: var(--ink);
+  font: 13px var(--ui-font);
+}
+/* Barre de navigation : une carte flottante au-dessus du classeur. */
+.noovy-header {
+  position: relative;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+.noovy-topbar {
+  box-sizing: border-box;
+  min-height: 56px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  gap: 10px;
+  padding: 8px 16px;
 }
-.noovy-brand { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 18px; font-weight: 700; }
-.noovy-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--surface); }
-.noovy-divider { width: 1px; height: 24px; background: var(--line); }
-.noovy-status { flex: 1; font-size: 12px; color: var(--ink-muted); }
+.noovy-brand { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 20px; font-weight: 500; letter-spacing: -.02em; }
+.noovy-wordmark { font-weight: 600; }
+.noovy-mark { display: block; flex: none; width: 32px; height: 32px; border-radius: 8px; object-fit: contain; }
+.noovy-divider { width: 1px; height: 22px; margin-inline: 4px; background: var(--grid-line); }
+.noovy-status { flex: 1; min-width: 0; padding-inline-start: 6px; font-size: 12px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.noovy-status::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 7px;
+  border-radius: 50%;
+  background: var(--brand-green);
+  vertical-align: 1px;
+}
+.noovy-status:empty { display: none; }
 .noovy-header button {
   flex: none;
-  margin-inline-start: auto;
-  height: 38px;
+  height: 34px;
   padding-inline: 16px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 6px;
   background: var(--accent);
   color: var(--surface);
-  font: 600 13px var(--ui-font);
+  font: 500 13px var(--ui-font);
+  letter-spacing: .01em;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgb(47 123 255 / 20%);
 }
-.noovy-header button:disabled { cursor: wait; }
+.noovy-header button:disabled { cursor: wait; opacity: .6; box-shadow: none; }
+.noovy-menu { position: relative; display: flex; align-items: center; }
+.noovy-menu-icon { display: none; }
+.noovy-header .noovy-menu-trigger {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: 400 13px var(--ui-font);
+  letter-spacing: 0;
+  box-shadow: none;
+}
+.noovy-menu-trigger::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-inline: 3.5px solid transparent;
+  border-top: 4px solid currentcolor;
+  opacity: .55;
+}
+.noovy-header .noovy-menu-trigger:hover:not(:disabled),
+.noovy-header .noovy-menu-trigger[aria-expanded="true"] { background: var(--surface-muted); color: var(--ink); }
+.noovy-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 244px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--grid-line);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgb(11 31 68 / 14%), 0 2px 6px rgb(11 31 68 / 7%);
+}
+.noovy-header .noovy-dropdown-item {
+  height: 34px;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: 400 13px var(--ui-font);
+  letter-spacing: 0;
+  text-align: left;
+  box-shadow: none;
+}
+.noovy-header .noovy-dropdown-item:hover:not(:disabled),
+.noovy-header .noovy-dropdown-item:focus-visible { background: var(--surface-muted); }
+.noovy-header .noovy-dropdown-item:disabled { color: var(--ink-muted); }
+.noovy-dropdown-sep { height: 1px; margin: 4px 6px; background: var(--grid-line); }
 .noovy-header button:hover:not(:disabled) { background: var(--accent-hover); }
 .noovy-title, .noovy-formula input {
   box-sizing: border-box;
@@ -56,20 +190,41 @@ html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   color: var(--ink);
   font: inherit;
 }
-.noovy-title { width: clamp(150px, 22vw, 230px); font-weight: 600; }
-.noovy-title:hover, .noovy-title:focus, .noovy-formula input:hover { background: var(--bg); border-color: var(--line); }
+.noovy-title { width: clamp(150px, 26vw, 260px); height: 32px; padding-inline: 10px; font-size: 15px; font-weight: 500; }
+.noovy-title:hover, .noovy-title:focus { background: var(--surface-muted); border-color: transparent; }
+.noovy-formula input:hover { background: var(--bg); border-color: var(--line); }
 #app :is(button, input, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-#app :is(button, input, .x-spreadsheet-toolbar-btn, .x-spreadsheet-menu > li) { transition: background-color 130ms, border-color 130ms; }
-.spreadsheet { flex: 1; min-height: 0; min-width: 0; background: var(--surface); }
+#app :is(button, input, .x-spreadsheet-toolbar-btn, .x-spreadsheet-menu > li) { transition: background-color 130ms, border-color 130ms, box-shadow 130ms; }
+
+/* Classeur : carte arrondie qui contient barre d'outils, grille et onglets. */
+.spreadsheet {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  position: relative;
+}
 .spreadsheet .x-spreadsheet { font-family: var(--ui-font); color: var(--ink); }
 .spreadsheet .x-spreadsheet-toolbar {
   box-sizing: border-box;
   width: 100% !important;
   height: 52px;
-  padding: 0 16px;
+  padding: 0 10px;
   align-items: center;
   background: var(--surface);
-  border-color: var(--line);
+  border-color: transparent;
+}
+/* Barre d'outils : un rail segmenté, actions en pastilles claires. */
+.spreadsheet .x-spreadsheet-toolbar-btns {
+  flex: none;
+  align-items: center;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--surface-muted);
 }
 .spreadsheet .x-spreadsheet-toolbar-btn {
   min-width: 32px;
@@ -81,52 +236,276 @@ html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   background: transparent;
   color: var(--ink-soft);
 }
-.spreadsheet .x-spreadsheet-toolbar-btn:hover { background: var(--hover); }
+.spreadsheet .x-spreadsheet-toolbar-btn:hover { background: var(--surface); box-shadow: 0 1px 2px rgb(11 31 68 / 8%); }
 .spreadsheet .x-spreadsheet-toolbar-btn.active,
-.spreadsheet .x-spreadsheet-toolbar-btn:has(.x-spreadsheet-icon-img.formula) { background: var(--accent-soft); color: var(--accent-ink); }
-.spreadsheet .x-spreadsheet-toolbar-divider { align-self: center; height: 20px; margin: 0 6px; border-color: var(--line); }
+.spreadsheet .x-spreadsheet-toolbar-btn:has(.x-spreadsheet-icon-img.formula) { background: var(--surface); color: var(--accent); box-shadow: inset 0 0 0 1px var(--line); }
+.spreadsheet .x-spreadsheet-toolbar-divider { align-self: center; height: 18px; margin: 0 4px; border-color: #DCE7F8; }
+
+/* Barre de formule : champs doux, sans cadre lourd. */
 .noovy-formula {
   box-sizing: border-box;
   height: 44px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-inline: 16px;
+  gap: 10px;
+  padding-inline: 12px;
   background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--grid-line);
 }
-.noovy-formula input:first-child { width: 72px; background: var(--bg); text-align: center; }
+.noovy-formula input:first-child { width: 64px; background: var(--surface-muted); text-align: center; font-weight: 600; }
 .noovy-formula input:last-child { flex: 1; }
 .noovy-formula > span { color: var(--accent); font: italic 600 16px Georgia, serif; }
 .spreadsheet .x-spreadsheet-table { font-variant-numeric: tabular-nums; }
-.spreadsheet .x-spreadsheet-selector .x-spreadsheet-selector-area { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.spreadsheet .x-spreadsheet-selector .x-spreadsheet-selector-area { border-color: var(--brand-green); background: color-mix(in srgb, var(--brand-green) 12%, transparent); }
 .spreadsheet .x-spreadsheet-selector .x-spreadsheet-selector-corner {
   box-sizing: border-box;
   width: 8px;
   height: 8px;
   border: 1px solid var(--surface);
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--brand-green);
 }
+/* Onglets de feuilles : pastilles dans un bandeau teinté, actif en relief. */
 .spreadsheet .x-spreadsheet-bottombar {
   box-sizing: border-box;
   height: 44px;
-  padding-inline: 12px;
+  padding: 0 8px;
+  gap: 6px;
+  align-items: center;
   justify-content: space-between;
   background: var(--surface-muted);
-  border-color: var(--line);
+  border-top: 1px solid var(--grid-line);
 }
-.spreadsheet .x-spreadsheet-menu > li { height: 43px; line-height: 43px; color: var(--ink-muted); border-color: var(--line); font-weight: 500; }
-.spreadsheet .x-spreadsheet-menu > li:hover { background: var(--hover); }
-.spreadsheet .x-spreadsheet-menu > li.active { background: var(--surface); color: var(--accent-ink); font-weight: 600; box-shadow: inset 0 -2px var(--accent); }
-.noovy-stats { display: flex; align-items: center; flex-wrap: wrap; justify-content: end; gap: 2px 12px; min-height: 42px; color: var(--ink-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu {
+  height: 100%;
+  gap: 4px;
+  align-items: center;
+}
+.spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  line-height: 1;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: 500 12.5px var(--ui-font);
+  cursor: pointer;
+  transition: background-color 130ms, color 130ms, box-shadow 130ms;
+}
+.spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li:first-child {
+  gap: 4px;
+  padding: 0 8px;
+  margin-inline-end: 2px;
+}
+.spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li:not(.active):hover { background: var(--hover); color: var(--ink); }
+.spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li.active {
+  background: var(--surface);
+  color: var(--accent-ink);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgb(11 31 68 / 8%);
+}
+.spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-icon { display: grid; place-items: center; }
+.noovy-stats {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 2px 12px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--grid-line);
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+/* ----------------------------------------------------------------------------
+   Actions rapides : bouton dans la barre d'outils, barre flottante et carte
+   d'explication au-dessus des onglets de feuilles.
+   ---------------------------------------------------------------------------- */
+.noovy-header .noovy-mode {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.noovy-header .noovy-mode:hover { background: var(--surface-muted); }
+.noovy-header .noovy-mode[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--surface);
+  box-shadow: 0 3px 10px rgb(47 123 255 / 30%);
+}
+
+/* Pastilles de groupe du carrousel : réservées au téléphone. */
+.noovy-groups { display: none; }
+
+.noovy-ctx {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  z-index: 5;
+  width: min(320px, calc(100% - 24px));
+  padding: 4px;
+  border: var(--card-border);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: 0 12px 28px -14px rgb(11 31 68 / 35%), 0 1px 2px rgb(11 31 68 / 6%);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 12px) scale(.96);
+  transform-origin: 50% 100%;
+  transition: opacity .18s, transform .3s cubic-bezier(.2, 1.25, .4, 1), visibility 0s .3s;
+}
+.noovy-ctx.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition-delay: 0s;
+}
+.noovy-ctx .acts { display: grid; grid-template-columns: 1fr 1.12fr 1fr; gap: 2px; }
+.noovy-ctx .acts button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  color: var(--ink-muted);
+  font: 500 11.5px var(--ui-font);
+  letter-spacing: .01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.noovy-ctx .acts button:hover { background: var(--surface-muted); }
+.noovy-ctx .acts button:active { transform: scale(.96); }
+.noovy-ctx .acts button svg { width: 18px; height: 18px; opacity: .85; }
+.noovy-ctx .acts .ai {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.noovy-ctx .acts .ai:hover { background: #DCE9FF; }
+.noovy-ctx .find { display: none; align-items: center; gap: 4px; height: 44px; padding: 0 4px 0 10px; color: var(--ink-muted); }
+.noovy-ctx .find svg { flex: none; width: 18px; height: 18px; }
+.noovy-ctx .find input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+.noovy-ctx .find input::placeholder { color: var(--ink-muted); }
+.noovy-ctx .find input:focus { outline: 2px solid var(--line); }
+.noovy-ctx .find input.miss { outline: 2px solid var(--danger); }
+.noovy-ctx .find button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.noovy-ctx .find button:hover { background: var(--surface-muted); }
+.noovy-ctx.finding .acts { display: none; }
+.noovy-ctx.finding .find { display: flex; }
+
+.noovy-ans {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  z-index: 5;
+  width: min(320px, calc(100% - 24px));
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 14px 34px rgb(27 36 51 / 22%), 0 0 0 1px var(--line);
+  font-size: 12.8px;
+  line-height: 1.5;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 8px);
+  transition: opacity .18s, transform .25s, visibility 0s .25s;
+}
+.noovy-ans.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition-delay: 0s;
+}
+.noovy-ans h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  color: var(--blue);
+  font: 600 12.5px var(--ui-font);
+}
+.noovy-ans p { margin: 0; padding-inline-end: 22px; color: #3B465C; }
+.noovy-ans > button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.noovy-ans > button:hover { background: var(--surface-muted); }
+
+/* Tactile : supprime le délai de 300 ms et le double-tap zoom sur les contrôles. */
+@media (pointer: coarse) {
+  .noovy-header button,
+  .noovy-header input,
+  .spreadsheet .x-spreadsheet-toolbar-btn,
+  .spreadsheet .x-spreadsheet-dropdown-header,
+  .spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li,
+  .noovy-add-sheet,
+  .noovy-header .noovy-mode { touch-action: manipulation; }
+
+  /* Cibles tactiles un peu plus larges, sans changer la hauteur du rail. */
+  .spreadsheet .x-spreadsheet-toolbar-btn { min-width: 34px; height: 34px; line-height: 32px; }
+  .spreadsheet .x-spreadsheet-toolbar .x-spreadsheet-dropdown-header { min-height: 32px; }
+}
+
 @media (max-width: 640px) {
-  .noovy-header { gap: 7px 8px; flex-wrap: wrap; padding-inline: 10px; }
+  #app { gap: 8px; padding: 8px; }
+  .noovy-topbar { gap: 7px 8px; flex-wrap: wrap; padding: 8px 10px; }
   .noovy-status { order: 1; flex-basis: 100%; }
   .noovy-status:empty { display: none; }
   .noovy-brand { font-size: 15px; gap: 6px; }
   .noovy-title { flex: 1; width: 0; }
   .noovy-header button { padding-inline: 9px; }
+  .noovy-dropdown { min-width: min(244px, calc(100vw - 24px)); }
 }
 
 .spreadsheet button.x-spreadsheet-dropdown-header {
@@ -140,85 +519,373 @@ html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 }
 .spreadsheet .x-spreadsheet-toolbar-btn > .x-spreadsheet-icon { vertical-align: middle; }
 .spreadsheet .x-spreadsheet-toolbar { overflow-x: auto; scrollbar-width: thin; }
-.spreadsheet .x-spreadsheet-toolbar-btns { flex: none; align-items: center; }
 .noovy-add-sheet {
   display: inline-grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   cursor: pointer;
 }
 .noovy-add-sheet:hover { background: var(--hover); }
+.noovy-add-sheet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.noovy-mark { width: 36px; height: 36px; background: var(--accent-ink); }
-.noovy-brand { letter-spacing: -.035em; }
-.noovy-word-grid { color: var(--accent); }
-.noovy-actions { margin-inline-start: auto; display: flex; gap: 6px; }
-.noovy-header .noovy-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--accent-ink); }
-.noovy-header .noovy-secondary:hover:not(:disabled) { background: var(--accent-soft); }
+.noovy-word-grid { color: var(--brand-green); }
+.noovy-actions { margin-inline-start: auto; display: flex; align-items: center; gap: 4px; }
 .noovy-formula input:last-child { background: var(--bg); border-color: var(--line); }
 .noovy-formula input:last-child::placeholder { color: var(--ink-muted); }
 .noovy-formula input:last-child:hover, .noovy-formula input:last-child:focus { border-color: var(--accent); }
-@media (max-width: 850px) {
-  .noovy-header { flex-wrap: wrap; gap: 8px; }
-  .noovy-status { order: 1; flex-basis: 100%; }
-  .noovy-status:empty { display: none; }
+/* Bouton de design : une icône seule, active les fonctions premium. */
+.noovy-header .noovy-design {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  box-shadow: none;
 }
+.noovy-header .noovy-design svg { flex: none; }
+.noovy-design-label { display: none; }
+.noovy-header .noovy-design:hover:not(:disabled) { background: var(--surface-muted); border-color: var(--surface-active); color: var(--ink); }
+.noovy-header .noovy-design[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+/* Dock et tiroir n'existent qu'en premium : jamais de place dans le flux,
+   même pendant l'image où le mode vient d'être désactivé. */
+html:not([data-design="premium"]) .noovy-drawer,
+html:not([data-design="premium"]) .noovy-veil { display: none; }
 @media (max-width: 500px) {
   .noovy-actions { flex-basis: 100%; }
   .noovy-header .noovy-actions button { flex: 1; }
 }
 
-/* Compact workbook title bar */
-.noovy-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 1.3fr) minmax(max-content, 1fr);
-  min-height: 42px;
-  padding: 4px 12px;
-  gap: 2px 12px;
-  background: var(--accent-ink);
-  border-color: var(--accent-hover);
-  color: var(--surface);
-}
-.noovy-header .noovy-brand { font-size: 14px; gap: 7px; }
-.noovy-header .noovy-mark { width: 26px; height: 26px; background: var(--accent-hover); border-radius: 6px; }
-.noovy-header .noovy-mark svg { width: 24px; height: 24px; }
-.noovy-header .noovy-word-grid { color: var(--accent-soft); }
-.noovy-header .noovy-divider { display: none; }
-.noovy-header .noovy-title {
-  justify-self: center;
-  width: min(100%, 260px);
-  text-align: center;
-  color: var(--surface);
-  height: 28px;
-}
-.noovy-header .noovy-title::placeholder { color: var(--accent-soft); }
-.noovy-header .noovy-title:hover, .noovy-header .noovy-title:focus { background: var(--accent-hover); border-color: var(--accent); }
-.noovy-header .noovy-status { grid-column: 1 / -1; grid-row: 2; justify-self: center; color: var(--accent-soft); font-size: 11px; }
-.noovy-header .noovy-status:empty { display: none; }
-.noovy-header button {
-  height: 28px;
-  padding-inline: 9px;
-  border-radius: 5px;
-  font-size: 12px;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-}
-.noovy-header button:hover:not(:disabled) { background: var(--surface); }
-.noovy-header .noovy-secondary { background: transparent; color: var(--surface); border-color: transparent; }
-.noovy-header .noovy-secondary:hover:not(:disabled) { background: var(--accent-hover); }
-#app .noovy-header :is(input, button):focus-visible { outline-color: var(--accent-soft); }
-@media (max-width: 485px) {
-  .noovy-header { grid-template-columns: max-content minmax(0, 1fr); }
-  .noovy-header .noovy-title { justify-self: end; }
-  .noovy-header .noovy-actions { grid-column: 1 / -1; grid-row: 2; }
-  .noovy-header .noovy-status { grid-row: 3; }
+/* Téléphone : mise en page de la maquette mobile — colonne centrée de cartes. */
+@media (max-width: 480px) {
+  :root {
+    --app-bg: #edf1f7;
+    --surface-muted: #f4f6fa;
+    --grid-line: #e5e9f1;
+    --line: #e5e9f1;
+    --hover: #eef1f6;
+    --surface-active: #e2e7ef;
+    --card-radius: 18px;
+    --card-shadow: 0 1px 2px rgb(27 36 51 / 5%), 0 8px 24px rgb(27 36 51 / 7%);
+  }
+  html, body { background: #edf1f7; }
+
+  #app {
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+    gap: 8px;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+    background: var(--app-bg);
+  }
+
+  /* En-tête : marque + Enregistrer, puis titre + état. */
+  .noovy-header {
+    border-color: transparent;
+    border-radius: 18px;
+    box-shadow: var(--card-shadow);
+  }
+  .noovy-topbar {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
+    grid-template-areas:
+      "brand . menu actions"
+      "title title title status";
+    gap: 6px 8px;
+    align-items: center;
+    min-height: 0;
+    padding: 10px 12px;
+  }
+  .noovy-brand { grid-area: brand; flex: none; gap: 0; }
+  /* Le logo suffit à identifier l'application : le nom reste sur ordinateur. */
+  .noovy-wordmark { display: none; }
+  .noovy-mark { width: 34px; height: 34px; border-radius: 10px; }
+  .noovy-divider { display: none; }
+  .noovy-topbar > button { grid-area: actions; justify-self: end; }
+  .noovy-actions { grid-area: actions; justify-self: end; margin-inline-start: 0; gap: 6px; }
+  /* Enregistrer passe dans le menu Fichier : la barre du haut reste légère. */
+  .noovy-header .noovy-actions { gap: 0; }
+  .noovy-header .noovy-actions button:not(.noovy-design):not(.noovy-mode) { display: none; }
+  .noovy-dropdown .noovy-dropdown-item:last-child { color: var(--accent); font-weight: 600; }
+  /* Premium : une pastille nommée, lisible d'un coup d'œil. */
+  .noovy-header .noovy-design {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    height: 34px;
+    gap: 6px;
+    padding: 0 11px;
+    border: 1px solid var(--accent-soft);
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font: 600 12px var(--ui-font);
+  }
+  .noovy-header .noovy-design:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .noovy-header .noovy-design[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--surface);
+    box-shadow: 0 3px 10px rgb(47 123 255 / 30%);
+  }
+  .noovy-design-label { display: inline; }
+  /* Actions rapides : une icône à côté de Premium, rien dans la barre d'outils. */
+  .noovy-header .noovy-mode {
+    width: 34px;
+    height: 34px;
+    margin-inline-end: 4px;
+    border-radius: 10px;
+    background: var(--surface-muted);
+  }
+  .noovy-header .noovy-mode[aria-pressed="true"] { background: var(--accent); }
+  /* Le conteneur inclut la carte d'outils sous les onglets : on remonte de sa hauteur. */
+  .noovy-ctx { bottom: 140px; }
+  .noovy-ans { bottom: 196px; }
+  .noovy-menu { grid-area: menu; justify-self: end; }
+  /* Le menu Fichier devient une icône, comme le bouton de design. */
+  .noovy-header .noovy-menu-trigger {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--surface-muted);
+  }
+  .noovy-header .noovy-menu-trigger::after { display: none; }
+  .noovy-menu-label { display: none; }
+  .noovy-menu-icon { display: block; }
+  .noovy-title {
+    grid-area: title;
+    width: 100%;
+    height: 26px;
+    padding-inline: 2px;
+    border: 0;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  /* Le texte d'état est masqué : le point vert suffit (il reste lu par les lecteurs d'écran). */
+  .noovy-status {
+    grid-area: status;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 8px;
+    max-width: none;
+    overflow: hidden;
+    padding-inline-start: 0;
+    font-size: 0;
+  }
+  .noovy-status::before {
+    width: 8px;
+    height: 8px;
+    margin-inline-end: 0;
+    vertical-align: 0;
+  }
+
+  /* Barre de formule : une carte à part, badge de référence et champ 40 px. */
+  .noovy-formula-host { order: 1; flex: none; margin-bottom: 8px; }
+  .noovy-formula {
+    height: 52px;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--surface);
+    border: 0;
+    border-radius: 18px;
+    box-shadow: var(--card-shadow);
+  }
+  .noovy-formula input:first-child {
+    width: 52px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: var(--surface-muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .noovy-formula > span { font-size: 17px; }
+  .noovy-formula input:last-child {
+    height: 40px;
+    padding-inline: 12px;
+    border-radius: 10px;
+    border-color: var(--line);
+    background: var(--surface);
+    font-size: 16px;
+  }
+
+  /* Le classeur devient une pile de cartes : formule, grille + onglets, outils. */
+  .spreadsheet {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .spreadsheet .x-spreadsheet {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: transparent;
+  }
+  .spreadsheet .x-spreadsheet-sheet {
+    order: 2;
+    flex: none;
+    border-radius: 18px 18px 0 0;
+    background: var(--surface);
+    box-shadow: var(--card-shadow);
+  }
+  .spreadsheet .x-spreadsheet-bottombar {
+    order: 3;
+    flex: none;
+    height: 44px;
+    margin-bottom: 8px;
+    padding: 0 8px;
+    overflow-x: auto;
+    background: #fafbfd;
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 18px 18px;
+    box-shadow: var(--card-shadow);
+  }
+  .spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu { gap: 4px; }
+  .spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li {
+    float: none;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+  .spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-menu > li.active {
+    box-shadow: 0 1px 3px rgb(27 36 51 / 14%);
+  }
+  /* La maquette ne garde que les onglets dans le bandeau. */
+  .noovy-stats { display: none; }
+  /* Le menu « Toutes les feuilles » se détache du bandeau défilant : en position
+     fixe il échappe au découpage de la barre et ne passe plus sous la grille. */
+  .spreadsheet .x-spreadsheet-bottombar .x-spreadsheet-dropdown .x-spreadsheet-dropdown-content {
+    position: fixed;
+    top: auto;
+    bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    right: auto;
+    z-index: 120;
+    max-height: 45vh;
+    overflow: auto;
+  }
+
+  /* Barre d'outils : carte d'icônes en bas de l'écran. */
+  .spreadsheet .x-spreadsheet-toolbar {
+    order: 4;
+    flex: none;
+    display: flex;
+    height: 52px;
+    padding: 0 6px;
+    align-items: center;
+    background: var(--surface);
+    border: 0;
+    border-radius: 18px;
+    box-shadow: var(--card-shadow);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    /* Carrousel : un glissement pose la barre sur le groupe suivant. */
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 6px;
+    overscroll-behavior-x: contain;
+  }
+  /* Groupes marqués par le script d'après les séparateurs de la librairie. */
+  .spreadsheet .x-spreadsheet-toolbar-btns > .noovy-snap-start {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  /* Bout des outils : seule accroche de fin, pour atteindre la dernière page. */
+  .spreadsheet .x-spreadsheet-toolbar-btns > .noovy-snap-end {
+    scroll-snap-align: end;
+  }
+  .spreadsheet .x-spreadsheet-toolbar::-webkit-scrollbar { height: 0; }
+  .spreadsheet .x-spreadsheet-toolbar-btns { padding: 0; background: transparent; gap: 2px; }
+  .spreadsheet .x-spreadsheet-toolbar .x-spreadsheet-toolbar-btn:not(:has(.x-spreadsheet-dropdown)) {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    line-height: 44px;
+    margin: 0;
+    border-radius: 12px;
+  }
+  /* Format, police et taille : trois pastilles larges et séparées, plus de tassement. */
+  .spreadsheet .x-spreadsheet-toolbar .x-spreadsheet-toolbar-btn:has(.x-spreadsheet-dropdown) {
+    width: auto;
+    min-width: 44px;
+    height: 44px;
+    margin: 0 2px;
+    padding: 0 8px;
+    border-radius: 12px;
+    background: var(--surface-muted);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .spreadsheet .x-spreadsheet-toolbar .x-spreadsheet-toolbar-btn:has(.x-spreadsheet-dropdown):hover {
+    background: var(--hover);
+    box-shadow: inset 0 0 0 1px var(--surface-active);
+  }
+  .spreadsheet .x-spreadsheet-toolbar-btn.active,
+  .spreadsheet .x-spreadsheet-toolbar-btn:has(.x-spreadsheet-icon-img.formula) {
+    background: var(--brand-green-soft);
+    color: var(--brand-green);
+    box-shadow: none;
+  }
+  .spreadsheet .x-spreadsheet-toolbar-btn:hover { background: var(--hover); }
+  .spreadsheet .x-spreadsheet-toolbar .x-spreadsheet-dropdown-header {
+    min-height: 44px;
+    padding-inline: 2px;
+    border-radius: 12px;
+  }
+  .spreadsheet .x-spreadsheet-toolbar-divider { height: 24px; margin: 0 3px; }
+  /* Repères de groupe, centrés sous la carte d'outils. */
+  .noovy-groups {
+    display: flex;
+    flex: none;
+    order: 5;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 12px;
+    margin-top: 4px;
+  }
+  .noovy-groups span {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: #C3CDDC;
+    transition: width .18s, background .18s;
+  }
+  .noovy-groups span.on { width: 14px; background: var(--accent); }
+
+  /* Édition d'une cellule : 16 px pour éviter le zoom iOS au focus. */
+  .spreadsheet .x-spreadsheet-editor-area textarea { font-size: 16px; }
+
+  /* Menu Fichier : ancré à l'en-tête pour ne jamais sortir de l'écran. */
+  .noovy-menu { position: static; }
+  .noovy-dropdown {
+    top: calc(100% - 4px);
+    right: 10px;
+    left: 10px;
+    width: auto;
+    min-width: 0;
+  }
 }
 
-.noovy-header .noovy-mark { width: 28px; height: 28px; background: transparent; }
-.noovy-header .noovy-mark svg { width: 28px; height: 28px; }
-.noovy-wordmark { font-weight: 700; }
-.noovy-header .noovy-word-grid { margin-inline-start: .13em; color: #B9EBD4; font-weight: 500; }

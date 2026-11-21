@@ -1,12 +1,7 @@
 import { read, utils, writeFileXLSX, type CellObject } from 'xlsx'
+import type { GridSheet } from './types/api'
 
-type GridCell = { text?: string; merge?: [number, number] }
-type GridSheet = {
-  name: string
-  rows: { len: number } & Record<number, { cells: Record<number, GridCell> }>
-  cols: { len: number }
-  merges: string[]
-}
+export type { GridSheet }
 
 export function importXlsx(bytes: ArrayBuffer): GridSheet[] {
   const workbook = read(bytes)
