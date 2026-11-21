@@ -43,13 +43,6 @@ export interface WorkbookPayload {
   sheets: GridSheet[]
 }
 
-/** Forme d'erreur normalisee de l'API : { "message": "..." }. */
-export interface ApiErrorBody {
-  message?: string
-  code?: string
-  details?: unknown
-}
-
 /** Forme de travail d'un classeur, partagee par le cache local et l'interface. */
 export interface WorkbookData {
   title: string

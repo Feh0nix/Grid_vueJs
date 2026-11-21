@@ -23,7 +23,7 @@ export function cellAddress(row: number, col: number): string {
 }
 
 /** Vrai si le texte represente un nombre exploitable. */
-export function isNumericText(value: string): boolean {
+function isNumericText(value: string): boolean {
   return NUMERIC_PATTERN.test(value.trim()) && Number.isFinite(Number(value))
 }
 

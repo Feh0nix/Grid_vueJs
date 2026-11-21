@@ -25,6 +25,8 @@ npm run preview
 
 La compilation génère le dossier `dist`. Sur Render, créez un **Static Site** à partir de ce dépôt et sélectionnez la branche `main`. Laissez **Root Directory** vide, indiquez `npm run build` comme **Build Command** et `dist` comme **Publish Directory**.
 
+Le fichier `.node-version` fixe la version de Node du build (24.21.0, compatible avec `engines`) : Render l'utilise automatiquement, ce qui rend le build reproductible. Les variables `VITE_API_*` sont intégrées au build : déclarez-les dans **Environment** avant de déployer.
+
 ## Où sont les classeurs ?
 
 Le bouton **Enregistrer** conserve le classeur courant dans le navigateur, pour l’adresse du site utilisée. Pour le transférer vers un autre navigateur ou appareil, exportez-le en XLSX. Effacer les données du site peut supprimer la sauvegarde locale.

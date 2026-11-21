@@ -23,7 +23,7 @@ export function toCsv(sheet: GridSheet): string {
   const lastRow = Math.max(...filled.map(Number))
   for (let r = 0; r <= lastRow; r += 1) {
     const cells = rows[r]?.cells ?? {}
-    const columns = Object.keys(cells).map(Number)
+    const columns = Object.keys(cells).map(Number).filter(Number.isInteger)
     if (!columns.length) {
       lines.push('')
       continue

@@ -79,7 +79,7 @@ function toSummary(workbook: WorkbookDetail): WorkbookSummary {
 }
 
 function notFound(): ApiError {
-  return new ApiError('Classeur introuvable.', 404, 'NOT_FOUND')
+  return new ApiError('Classeur introuvable.', 404)
 }
 
 /** Id reserve pour verifier l'etat d'erreur de l'interface. */
@@ -87,7 +87,7 @@ const FAILING_ID = 'erreur'
 
 /** Reproduit l'echec serveur sur l'id de demonstration. */
 function assertStable(id: string): void {
-  if (id === FAILING_ID) throw new ApiError('Erreur simulee par le mode demonstration.', 500, 'SERVER')
+  if (id === FAILING_ID) throw new ApiError('Erreur simulee par le mode demonstration.', 500)
 }
 
 function findWorkbook(workbooks: WorkbookDetail[], id: string): WorkbookDetail {
