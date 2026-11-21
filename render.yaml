@@ -1,0 +1,33 @@
+# Configuration Render du site (Blueprint).
+# Reproduit exactement le déploiement attendu : aucune saisie manuelle dans le
+# dashboard, et surtout l'installation des dépendances avant le build.
+services:
+  - type: web
+    name: noovy-grid
+    runtime: static
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # Version de Node du build, alignée sur package.json "engines" et .node-version.
+      - key: NODE_VERSION
+        value: 24.21.0
+      # Valeurs injectées à la compilation par Vite : elles doivent exister au build.
+      # VITE_API_URL reste à renseigner dans le dashboard (sync: false).
+      - key: VITE_API_MOCK
+        value: "false"
+      - key: VITE_API_TIMEOUT
+        value: "15000"
+      - key: VITE_API_URL
+        sync: false
+    headers:
+      # index.html ne doit jamais être servi depuis un cache : il référence les
+      # bundles hachés de la version courante.
+      - path: /index.html
+        name: Cache-Control
+        value: no-store
+      # Les bundles portent un hash de contenu : ils peuvent être mis en cache à vie.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
